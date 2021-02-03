@@ -8,6 +8,11 @@ pip install bs4 && \
 pip install python-telegram-bot && \
 pip install notebook
 
+
+COPY docker/entrypoint.sh /entrypoint.sh
+
+RUN chmod 775 /entrypoint.sh
+
 expose 8888
 
-ENTRYPOINT ["jupyter", "notebook", "--allow-root", "--ip", "0.0.0.0"]
+ENTRYPOINT /entrypoint.sh
