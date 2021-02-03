@@ -16,6 +16,7 @@ class Korail(object):
     
     interval = 0.02 ##sec
     
+    loginSuc = False
     txtGoHour = "000000"
     specialVal = ""
     
@@ -32,7 +33,17 @@ class Korail(object):
         self.s.headers["Sec-Fetch-Mode"] = "navigate"
         self.s.headers["Sec-Fetch-Site"] = "cross-site"
         self.s.headers["Origin"] = "http://www.letskorail.com"
+    
+    def checkInfo(self):
+        check1 = (self.reserveInfo['depDate'] == "")
+        check2 = (self.reserveInfo['srcLoate'] == "")
+        check3 = (self.reserveInfo['dstLocate'] == "")
+        if (check1 and check2 and check3):
+            raise exception("초기값 설정이 안되었습니다. setInfo() 함수를 호출하세요.")
+        elif (not self.loginSuc):
+            raise exception("초기값 설정이 안되었습니다. login()함수를 호출하세요.")
         
+    
     def login(self, username, password):
         loginUrl = "https://www.letskorail.com/korail/com/loginAction.do"
         loginData = {
@@ -46,6 +57,8 @@ class Korail(object):
         login = self.s.post(loginUrl, data=loginData)
         if (login.status_code != 200):
             raise exception("로그인 실패")
+        else:
+            self.loginSuc = True
             
     def setInfo(self, depDate, srcLoate, dstLocate, specialVal="N"):
         self.reserveInfo['depDate'] = depDate
@@ -54,6 +67,7 @@ class Korail(object):
         self.specialVal = specialVal #Option Default "N" => Don't reserve Special Seat
 
     def reserveData(self):
+        self.checkInfo()
         
         depDate = self.reserveInfo['depDate']
         depTime = self.reserveInfo['depTime']
