@@ -5,6 +5,7 @@ pip install flask_restful && \
 pip install requests && \
 pip install flask-cors && \
 pip install bs4 && \
+pip install python-telegram-bot && \
 pip install notebook
 
 expose 8888

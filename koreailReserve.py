@@ -107,7 +107,14 @@ class Korail(object):
         return tdsData, scriptItems, txtGoHour
     
     def reserve(self):
+        self.getTickets()
+        self.reserveInfo['reserveSuc'] = False
+        currentTickets = self.ticketCount
         tdsData, scriptItems, txtGoHour = self.reserveData()
+        
+        if (len(tdsData) == 0):
+            print ("예약가능한 노선이 아닙니다.")
+            return self.reserveInfo
         
         #페이지 기준 데이터로 예약 가능 여부 확인 후 예매 트리거
         for count, dumy in enumerate(tdsData):
@@ -128,12 +135,14 @@ class Korail(object):
             if (seatNormal == "예약하기"):
                 
                 req = self.reserveRequests(depCode, arrCode, depDate, depTime, "1")
-                
-                
+                self.getTickets()
+                if (self.ticketCount > currentTickets):
                 #예약현황 리스트 수 확인해서 성공 여부 체크
-                print ("Nomal Reserved")
-                self.reserveInfo['special'] = 1
-                self.reserveInfo['reserveSuc'] = True
+                    print ("Nomal Reserved")
+                    self.reserveInfo['special'] = 1
+                    self.reserveInfo['reserveSuc'] = True
+                else :
+                    print ("Nomal Reserved Fail")
 
 
             #특별좌석 예매
@@ -141,11 +150,14 @@ class Korail(object):
                 if (self.specialVal == "Y") : 
                     
                     req = self.reserveRequests(depCode, arrCode, depDate, depTime, "2")
-                    
+                    self.getTickets()
+                    if (self.ticketCount > currentTickets):
                     #예약현황 리스트 수 확인해서 성공 여부 체크
-                    print ("Special Reserved")
-                    self.reserveInfo['special'] = 2
-                    self.reserveInfo['reserveSuc'] = True
+                        print ("Special Reserved")
+                        self.reserveInfo['special'] = 2
+                        self.reserveInfo['reserveSuc'] = True
+                    else :
+                        print ("Special Reserved Fail")
             
             print (self.reserveInfo)
             
@@ -193,6 +205,34 @@ class Korail(object):
             "txtDptTm1": depTime,  #출발 시간
             "txtArvRsStnCd1": arrCode, # 도착역 코드
             "txtTrnClsfCd1": "00" # 열차 종류(Train Class Code인듯)
-        }
+        }    
         req = self.s.post(url, data=data)
         return req
+    
+    def getTickets(self):
+        ticketUrl="https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do"
+        req = self.s.get(ticketUrl)
+        soup = bs(req.text, 'html.parser')
+        ticketCountAll = len(soup.find_all('input', {"name": "radPnr", "type": "radio"})) ##마이페이지에 있는 티켓 갯수
+        ticketCountYet = 0
+        labels = []
+        for num in range(ticketCountAll):
+            spansSoup = soup.find_all('td', {"class": "txt_red left_black"})[num]
+            span = spansSoup.text.strip()
+            if ("결제완료" in span):
+                pass
+                #결제 완료에 대한 추가 기능 생각나면 넣자
+            else:
+                print ("예약티켓")
+
+                labelSoup = soup.find_all('label', {"for": "radio{}".format(num)})
+                ticketCountYet += 1
+                labels.append([])
+                for label in labelSoup:
+                    labels[-1].append(label.text)
+                    
+        #예매티켓 갯수 갱신 (예매 확인용)
+        self.ticketCount = ticketCountYet
+        
+        #예매티켓에 대한 정보 array로 전달
+        return labels
