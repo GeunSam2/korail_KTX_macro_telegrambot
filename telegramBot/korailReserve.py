@@ -2,7 +2,6 @@ import requests
 import time
 from bs4 import BeautifulSoup as bs
 
-
 class Korail(object):
     s = requests.session()
 
@@ -22,7 +21,7 @@ class Korail(object):
     
     
     #출력용 방향 정보 만들기
-    direction = "{} -> {}".format(srcLoate, dstLocate)
+#     direction = "{} -> {}".format(srcLoate, dstLocate)
     
     def __init__(self):
         self.s.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"
