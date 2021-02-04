@@ -1,1 +1,3 @@
 *.ipynb
+*.pyc
+certs_real/*

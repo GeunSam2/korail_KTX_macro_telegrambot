@@ -8,12 +8,12 @@ class Korail(object):
     reserveInfo = {}
     reserveInfo['depDate'] = ""
     reserveInfo['depTime'] = ""
-    reserveInfo['srcLoate'] = ""
+    reserveInfo['srcLocate'] = ""
     reserveInfo['dstLocate'] = ""
     reserveInfo['special'] = "1"  #일반석1, 특등석:2
     reserveInfo['reserveSuc'] = False
     
-    interval = 0.02 ##sec
+    interval = 1 ##sec 분당 100회 이상이면 이상탐지에 걸림
     
     loginSuc = False
     txtGoHour = "000000"
@@ -21,7 +21,7 @@ class Korail(object):
     
     
     #출력용 방향 정보 만들기
-#     direction = "{} -> {}".format(srcLoate, dstLocate)
+#     direction = "{} -> {}".format(srcLocate, dstLocate)
     
     def __init__(self):
         self.s.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"
@@ -35,7 +35,7 @@ class Korail(object):
     
     def checkInfo(self):
         check1 = (self.reserveInfo['depDate'] == "")
-        check2 = (self.reserveInfo['srcLoate'] == "")
+        check2 = (self.reserveInfo['srcLocate'] == "")
         check3 = (self.reserveInfo['dstLocate'] == "")
         if (check1 and check2 and check3):
             raise exception("초기값 설정이 안되었습니다. setInfo() 함수를 호출하세요.")
@@ -54,14 +54,18 @@ class Korail(object):
             "UserPwd": password
         }
         login = self.s.post(loginUrl, data=loginData)
-        if (login.status_code != 200):
-            raise exception("로그인 실패")
-        else:
+        #로그인 성공시 javascript 구문이 짦게 나오고 아래 변수가 유일하게 섞여있음.
+        if ("strWebPwdCphdAt" in login.text):
+            print ("로그인 성공")
             self.loginSuc = True
+        else:
+            print ("로그인 실패")
+            self.loginSuc = False
+        return self.loginSuc
             
-    def setInfo(self, depDate, srcLoate, dstLocate, specialVal="N"):
+    def setInfo(self, depDate, srcLocate, dstLocate, specialVal="N"):
         self.reserveInfo['depDate'] = depDate
-        self.reserveInfo['srcLoate'] = srcLoate
+        self.reserveInfo['srcLocate'] = srcLocate
         self.reserveInfo['dstLocate'] = dstLocate
         self.specialVal = specialVal #Option Default "N" => Don't reserve Special Seat
 
@@ -70,14 +74,14 @@ class Korail(object):
         
         depDate = self.reserveInfo['depDate']
         depTime = self.reserveInfo['depTime']
-        srcLoate = self.reserveInfo['srcLoate']
+        srcLocate = self.reserveInfo['srcLocate']
         dstLocate = self.reserveInfo['dstLocate']
         txtGoHour = self.txtGoHour
         
         data={
             "selGoTrain": "05",
             "radJobId": 1,
-            "txtGoStart": srcLoate,
+            "txtGoStart": srcLocate,
             "txtGoEnd": dstLocate,
             "selGoHour": "00",
             "txtGoHour": txtGoHour,

@@ -6,6 +6,8 @@ pip install requests && \
 pip install flask-cors && \
 pip install bs4 && \
 pip install python-telegram-bot && \
+pip install pyOpenSSL && \
+pip install uwsgi && \
 pip install notebook
 
 
