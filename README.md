@@ -8,11 +8,10 @@
 
 ## 설정법
 
-### SSL 인증서(fullchain인증서, 개인키) 및 동작 포트 설정
+### SSL 인증서(fullchain인증서, 개인키)
 
-1. 가장 상단 값인 listen 값을 수정하여 리스닝할 포트를 지정한다.
-2. 텔레그램 api의 webhook을 수신할 때 설정할 도메인에 해당하는 SSL 인증서를 `/source/certs` 디렉토리에 위치시킨다. 풀체인 인증서와 개인키 파일 두개가 필요하다. 예시에서는 `fullchain.pem`, `privkey.pem`  라는 이름으로 두개의 파일을 설정하였다.
-3. `/nginx/wsgi.conf` 에 인증서 파일명을 명시하여 설정을 완료한다.
+1. 텔레그램 api의 webhook을 수신할 때 설정할 도메인에 해당하는 SSL 인증서를 `/source/certs` 디렉토리에 위치시킨다. 풀체인 인증서와 개인키 파일 두개가 필요하다. 예시에서는 `fullchain.pem`, `privkey.pem`  라는 이름으로 두개의 파일을 설정하였다.
+2. `/nginx/wsgi.conf` 에 인증서 파일명을 명시하여 설정을 완료한다.
 
 ```config
 server {
@@ -48,4 +47,12 @@ git 디렉토리의 최 상위 경로에서 위의 설정들(인증서, 토큰)�
 
 ```docker
 docker build -t [사용할 이미지명] -f docker/Dockerfile .
+```
+
+### 도커 실행
+
+빌드 된 이미지를 실행하려면 아래와 같이 실행할 수 있다.(nginx 설정에서 동작포트틑 바꾸지 않았을 경우 예시)
+
+```bash
+docker run -dit -p [외부에 노출시킬 포트]:8080 [빌드한 이미지명]
 ```
