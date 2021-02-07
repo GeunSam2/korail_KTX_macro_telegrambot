@@ -43,7 +43,7 @@ botToken="123456789:AAFqYK2l6uovPVJ_7abcabcabcabcabc" #예시
 
 ### 도커 build
 
-git 디렉토리의 최 상위 경로에서 위의 설정들(인증서, 토큰)을 모두 완료 한 후 아래 명령을 통해 빌드할 수 있습니다.
+git 디렉토리의 최 상위 경로에서 위의 설정들(인증서, 토큰)을 모두 완료 한 후 아래 명령을 통해 빌드할 수 있다.
 
 ```docker
 docker build -t [사용할 이미지명] -f docker/Dockerfile .
