@@ -111,84 +111,73 @@ class Korail(object):
         return tdsData, scriptItems, txtGoHour
     
     def reserve(self):
-        self.getTickets()
-        self.reserveInfo['reserveSuc'] = False
-        currentTickets = self.ticketCount
-        tdsData, scriptItems, txtGoHour = self.reserveData()
-        
-        if (len(tdsData) == 0):
-            if (self.chatId == ""):
-                return "wrong"
-            else:
-                self.telebotResponse("wrong")
-                return None
-        
-        #페이지 기준 데이터로 예약 가능 여부 확인 후 예매 트리거
-        for count, dumy in enumerate(tdsData):
-            
-            #예약가능 여부 뽑기
-            items = dumy.find_all('td')
-            seatSpecial = items[4].img['alt'] ##특등석 예약가능 여부
-            seatNormal = items[5].img['alt']  ##일반석 예약가능 여부
-            
-            #예약 필요 정보 뽑기
-            scriptItem = scriptItems[count].string.replace("\r\n","").replace("\t","").replace(" ","").split('"')[1:-1]
-            while ',' in scriptItem :
-                scriptItem.remove(',')
-            depCode, arrCode, depDate, depTime = scriptItem[18], scriptItem[20], scriptItem[0], scriptItem[29]
-            self.reserveInfo['depTime'] = depTime
-            
-            #일반좌석 예매
-            if (seatNormal == "예약하기"):
-                
-                req = self.reserveRequests(depCode, arrCode, depDate, depTime, "1")
-                self.getTickets()
-                if (self.ticketCount > currentTickets):
-                #예약현황 리스트 수 확인해서 성공 여부 체크
-                    print ("Nomal Reserved")
-                    self.reserveInfo['special'] = 1
-                    self.reserveInfo['reserveSuc'] = True
-                else :
-                    print ("Nomal Reserved Fail")
-                    if (self.chatId == ""):
-                        return self.reserveInfo
-                    else:
-                        self.telebotResponse(self.reserveInfo)
-                        return None
+        while (not self.reserveInfo['reserveSuc']):
+            self.getTickets()
+            self.reserveInfo['reserveSuc'] = False
+            currentTickets = self.ticketCount
+            tdsData, scriptItems, txtGoHour = self.reserveData()
 
+            if (len(tdsData) == 0):
+                if (self.chatId == ""):
+                    return "wrong"
+                else:
+                    self.telebotResponse("wrong")
+                    return None
 
-            #특별좌석 예매
-            elif (seatSpecial == "예약하기"):
-                if (self.specialVal == "Y") : 
-                    
-                    req = self.reserveRequests(depCode, arrCode, depDate, depTime, "2")
+            #페이지 기준 데이터로 예약 가능 여부 확인 후 예매 트리거
+            for count, dumy in enumerate(tdsData):
+
+                #예약가능 여부 뽑기
+                items = dumy.find_all('td')
+                seatSpecial = items[4].img['alt'] ##특등석 예약가능 여부
+                seatNormal = items[5].img['alt']  ##일반석 예약가능 여부
+
+                #예약 필요 정보 뽑기
+                scriptItem = scriptItems[count].string.replace("\r\n","").replace("\t","").replace(" ","").split('"')[1:-1]
+                while ',' in scriptItem :
+                    scriptItem.remove(',')
+                depCode, arrCode, depDate, depTime = scriptItem[18], scriptItem[20], scriptItem[0], scriptItem[29]
+                self.reserveInfo['depTime'] = depTime
+
+                #일반좌석 예매
+                if (seatNormal == "예약하기"):
+
+                    req = self.reserveRequests(depCode, arrCode, depDate, depTime, "1")
                     self.getTickets()
                     if (self.ticketCount > currentTickets):
                     #예약현황 리스트 수 확인해서 성공 여부 체크
-                        print ("Special Reserved")
-                        self.reserveInfo['special'] = 2
+                        print ("Nomal Reserved")
+                        self.reserveInfo['special'] = 1
                         self.reserveInfo['reserveSuc'] = True
                     else :
-                        print ("Special Reserved Fail")
-                        if (self.chatId == ""):
-                            return self.reserveInfo
-                        else:
-                            self.telebotResponse(self.reserveInfo)
-                            return None
-                        
-            currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
-            print ("{} {}".format(currentTime, self.reserveInfo))
-            
-            #예매에 성공하지 못하면 계속 시도
-            if (not self.reserveInfo['reserveSuc']):
+                        print ("Nomal Reserved Fail")
+                    break
+
+                #특별좌석 예매
+                elif (seatSpecial == "예약하기"):
+                    if (self.specialVal == "Y") : 
+
+                        req = self.reserveRequests(depCode, arrCode, depDate, depTime, "2")
+                        self.getTickets()
+                        if (self.ticketCount > currentTickets):
+                        #예약현황 리스트 수 확인해서 성공 여부 체크
+                            print ("Special Reserved")
+                            self.reserveInfo['special'] = 2
+                            self.reserveInfo['reserveSuc'] = True
+                        else :
+                            print ("Special Reserved Fail")
+                        break
+
+                currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
+                print ("{} {}".format(currentTime, self.reserveInfo))
                 time.sleep(self.interval)
-                self.reserve()
-            else :
-                if (self.chatId == ""):
-                    return self.reserveInfo
-                else:
-                    self.telebotResponse(self.reserveInfo)
-                    return None
+
+            #Out of While loop
+            if (self.chatId == ""):
+                return self.reserveInfo
+            else:
+                self.telebotResponse(self.reserveInfo)
+                return None
 
     def reserveRequests(self, depCode, arrCode, depDate, depTime, special):
         # 실질적인 예약 기능
