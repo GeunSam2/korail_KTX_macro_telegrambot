@@ -123,10 +123,9 @@ class Korail(object):
                 else:
                     self.telebotResponse("wrong")
                     return None
-
             #페이지 기준 데이터로 예약 가능 여부 확인 후 예매 트리거
             for count, dumy in enumerate(tdsData):
-
+                
                 #예약가능 여부 뽑기
                 items = dumy.find_all('td')
                 seatSpecial = items[4].img['alt'] ##특등석 예약가능 여부
@@ -168,16 +167,16 @@ class Korail(object):
                             print ("Special Reserved Fail")
                         break
 
-                currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
-                print ("{} {}".format(currentTime, self.reserveInfo))
-                time.sleep(self.interval)
+            currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
+            print ("{} {}".format(currentTime, self.reserveInfo))
+            time.sleep(self.interval)
 
             #Out of While loop
-            if (self.chatId == ""):
-                return self.reserveInfo
-            else:
-                self.telebotResponse(self.reserveInfo)
-                return None
+        if (self.chatId == ""):
+            return self.reserveInfo
+        else:
+            self.telebotResponse(self.reserveInfo)
+            return None
 
     def reserveRequests(self, depCode, arrCode, depDate, depTime, special):
         # 실질적인 예약 기능
