@@ -8,14 +8,15 @@
 
 ## 설정법
 
-### SSL 인증서 설정(fullchain인증서, 개인키)
+### SSL 인증서(fullchain인증서, 개인키) 및 동작 포트 설정
 
-1. 텔레그램 api의 webhook을 수신할 때 설정할 도메인에 해당하는 SSL 인증서를 `/source/certs` 디렉토리에 위치시킨다. 풀체인 인증서와 개인키 파일 두개가 필요하다. 예시에서는 `fullchain.pem`, `privkey.pem`  라는 이름으로 두개의 파일을 설정하였다.
-2. `/nginx/wsgi.conf` 에 인증서 파일명을 명시하여 설정을 완료한다.
+1. 가장 상단 값인 listen 값을 수정하여 리스닝할 포트를 지정한다.
+2. 텔레그램 api의 webhook을 수신할 때 설정할 도메인에 해당하는 SSL 인증서를 `/source/certs` 디렉토리에 위치시킨다. 풀체인 인증서와 개인키 파일 두개가 필요하다. 예시에서는 `fullchain.pem`, `privkey.pem`  라는 이름으로 두개의 파일을 설정하였다.
+3. `/nginx/wsgi.conf` 에 인증서 파일명을 명시하여 설정을 완료한다.
 
-```dart
+```config
 server {
-    listen  8080;
+    listen  8080; //서비스 포트
     server_name telebot.modutech.win;
 
     ssl                  on;
