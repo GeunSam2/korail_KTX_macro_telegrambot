@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, make_response
 from flask_restful import marshal_with, Resource, reqparse, fields
 from .korailReserve import Korail
 from .botToken import botToken
+from multiprocessing import Process
 import requests
 import time
 import base64
@@ -89,13 +90,17 @@ class Index(Resource):
         inProgress, progressNum = self.getUserProgress(chatId)
         print ("CHATID : {} , TEXT : {}, InProgress : {}, Progress : {}".format(chatId, getText, inProgress, progressNum))
         
-        if (progressNum == 9):
+        if (getText == "/cancel"):
+            self.cancelFunc(chatId)
+            return make_response("OK")
+        elif (progressNum == 9):
             self.alreadyDoing(chatId)
             return make_response("OK")
+        
         if (getText == "/start"):
             self.startFunc(chatId)
-        elif (getText == "/cancel"):
-            self.cancelFunc(chatId)
+        elif (getText == "/testFunc"):
+            self.testFunc(chatId)
         elif (getText[0] == "/"):
             getText = "잘못된 명령어 입니다."
             self.sendMessage(chatId, getText)
@@ -198,12 +203,12 @@ class Index(Resource):
             elif (str(data).upper() == "N" or str(data) == "아니오"):
                 self.manageProgress(chatId, 0)
                 msg = "예약이 취소되었습니다."
-                self.sendMessage(chatId, msg)
+                self.sendMessage(chatId, msg) 
             else:
                 msg = """
 로그인에 실패하였습니다. 로그인에 사용한 정보는 다음과 같습니다.
 ==============
-아이디 : {}
+아이디 : {} 
 암호 : 보안상 공개불가
 ==============
 'Y'또는 '예'를 입력하시면 계정정보를 다시 입력합니다.
@@ -307,46 +312,18 @@ class Index(Resource):
             srcLocate = self.userDict[chatId]["trainInfo"]["srcLocate"]
             dstLocate = self.userDict[chatId]["trainInfo"]["dstLocate"]
             specialInfo = self.userDict[chatId]["trainInfo"]["specialInfo"]
-            korail = Korail()
-            loginSuc = korail.login(username, password)
-            korail.setInfo(depDate, srcLocate, dstLocate, specialInfo)
+#             korail = Korail()
+#             korail.login(username, password)
+#             korail.setInfo(depDate, srcLocate, dstLocate, specialInfo, chatId)
+#             backProc = Process(target=korail.reserve, args=())
+#             backProc.start() 
+            cmd = "python /source/telegramBot/telebotBackProcess.py {} {} {} {} {} {} {} &".format(username, password, depDate, srcLocate, dstLocate, specialInfo, chatId)
+            os.system(cmd)
             msg = """
 예약 프로그램 동작이 시작되었습니다.
 매진된 자리에 공석이 생길 때 까지 근삼봇이 열심히 찾아볼게요!
 예약에 성공하면 여기로 다시 알려줄게요!
-"""
-            self.sendMessage(chatId, msg)
-            result = korail.reserve()
-            if (result == "wrong"):
-                self.manageProgress(chatId, 0)
-                msg = "차편을 찾을 수 없거나, 검색에 문제가 생겼어요. 처음부터 다시 시도해 주세요."
-                self.sendMessage(chatId, msg)
-            elif (result["reserveSuc"]):
-                depDate = result["depDate"]
-                depTime = result["depTime"]
-                srcLocate = result["srcLocate"]
-                dstLocate = result["dstLocate"]
-                depTime = "{}:{}".format(depTime[0:2], depTime[2:4])
-                msg = """
-열차 예약에 성공했습니다!!
-예약에 성공한 열차 정보는 다음과 같습니다.
-===================
-출발역 : {}
-도착역 : {}
-출발일 : {}
-출발시각 : {}
-===================
-
-20분내에 사이트에서 결제를 완료하지 않으면 예약이 취소되니 서두르세요!
-https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
-""".format(srcLocate, dstLocate, depDate, depTime)
-                self.manageProgress(chatId, 0)
-            else :
-                msg = "알수 없는 오류로 예매에 실패했습니다. 처음부터 다시 시도해주세요."
-                self.manageProgress(chatId, 0)
-                self.sendMessage(chatId, msg)
-            
-                
+"""       
         elif (str(data).upper() == "N" or str(data) == "아니오"):
             self.manageProgress(chatId, 0)
             msg = "예약 작업이 취소되었습다."
@@ -385,8 +362,46 @@ https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
         ##이미 시작된 예약을 취소하는 기능은 아직 미구현
         return None
     
-       
+    
+    ## korail class 내부 callback용 함수
+    def get(self):
+        paramList = set(["chatId", "msg", "status"])
+        getParams = set(dict(request.args).keys())
+        if (getParams & paramList != paramList):
+            return make_response("OK")
+        else:
+            chatId = request.args.get('chatId')
+            msg = request.args.get('msg')
+            status = request.args.get('status')
+            if (status == 0):
+                self.manageProgress(chatId, 0)
+            self.sendMessage(chatId, msg)
+        return make_response("OK")
+    
+    
+    ##개발자 편하라고 만든 예약함수
+    def testFunc(self, chatId):
+        self.userDict[chatId]["inProgress"] = True
+        self.userDict[chatId]["lastAction"] = 9
+        username = "개발자 ID"
+        password = "개발자 비번"
+        depDate = "20210214" 
+        srcLocate = "광주송정"
+        dstLocate = "광명"
+        specialInfo = "1" 
+        self.userDict[chatId]["trainInfo"]["depDate"] = depDate
+        self.userDict[chatId]["trainInfo"]["srcLocate"] = srcLocate
+        self.userDict[chatId]["trainInfo"]["dstLocate"] = dstLocate
+        self.userDict[chatId]["trainInfo"]["specialInfo"] = specialInfo
+        cmd = "python /source/telegramBot/telebotBackProcess.py {} {} {} {} {} {} {} &".format(username, password, depDate, srcLocate, dstLocate, specialInfo, chatId)
+        os.system(cmd)
+        msg = """
+예약 프로그램 동작이 시작되었습니다.
+매진된 자리에 공석이 생길 때 까지 근삼봇이 열심히 찾아볼게요!
+예약에 성공하면 여기로 다시 알려줄게요!
+"""       
+        self.sendMessage(chatId, msg)
+        return None
         
-        
-        
+               
         
