@@ -1,6 +1,8 @@
 import requests
 import time
 from bs4 import BeautifulSoup as bs
+import sys
+sys.setrecursionlimit(10**7)
 
 class Korail(object):
     s = requests.session()
@@ -18,10 +20,7 @@ class Korail(object):
     loginSuc = False
     txtGoHour = "000000"
     specialVal = ""
-    
-    
-    #출력용 방향 정보 만들기
-#     direction = "{} -> {}".format(srcLocate, dstLocate)
+    chatId = "" ##Telegram Chat bot에서 callback 받을때 전달 받아야 함
     
     def __init__(self):
         self.s.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"
@@ -31,6 +30,7 @@ class Korail(object):
         self.s.headers["Sec-Fetch-User"] = "?1"
         self.s.headers["Sec-Fetch-Mode"] = "navigate"
         self.s.headers["Sec-Fetch-Site"] = "cross-site"
+        self.s.headers["Accept-Encoding"] = "gzip, deflate, br"
         self.s.headers["Origin"] = "http://www.letskorail.com"
     
     def checkInfo(self):
@@ -63,11 +63,12 @@ class Korail(object):
             self.loginSuc = False
         return self.loginSuc
             
-    def setInfo(self, depDate, srcLocate, dstLocate, specialVal="N"):
+    def setInfo(self, depDate, srcLocate, dstLocate, specialVal="N", chatId=""):
         self.reserveInfo['depDate'] = depDate
         self.reserveInfo['srcLocate'] = srcLocate
         self.reserveInfo['dstLocate'] = dstLocate
         self.specialVal = specialVal #Option Default "N" => Don't reserve Special Seat
+        self.chatId = chatId ##Telegram Chat bot에서 callback 받을때 전달 받아야 함
 
     def reserveData(self):
         self.checkInfo()
@@ -116,8 +117,11 @@ class Korail(object):
         tdsData, scriptItems, txtGoHour = self.reserveData()
         
         if (len(tdsData) == 0):
-            print ("예약가능한 노선이 아닙니다.")
-            return self.reserveInfo
+            if (self.chatId == ""):
+                return "wrong"
+            else:
+                self.telebotResponse("wrong")
+                return None
         
         #페이지 기준 데이터로 예약 가능 여부 확인 후 예매 트리거
         for count, dumy in enumerate(tdsData):
@@ -146,6 +150,11 @@ class Korail(object):
                     self.reserveInfo['reserveSuc'] = True
                 else :
                     print ("Nomal Reserved Fail")
+                    if (self.chatId == ""):
+                        return self.reserveInfo
+                    else:
+                        self.telebotResponse(self.reserveInfo)
+                        return None
 
 
             #특별좌석 예매
@@ -161,15 +170,25 @@ class Korail(object):
                         self.reserveInfo['reserveSuc'] = True
                     else :
                         print ("Special Reserved Fail")
-            
-            print (self.reserveInfo)
+                        if (self.chatId == ""):
+                            return self.reserveInfo
+                        else:
+                            self.telebotResponse(self.reserveInfo)
+                            return None
+                        
+            currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
+            print ("{} {}".format(currentTime, self.reserveInfo))
             
             #예매에 성공하지 못하면 계속 시도
             if (not self.reserveInfo['reserveSuc']):
                 time.sleep(self.interval)
                 self.reserve()
             else :
-                return self.reserveInfo
+                if (self.chatId == ""):
+                    return self.reserveInfo
+                else:
+                    self.telebotResponse(self.reserveInfo)
+                    return None
 
     def reserveRequests(self, depCode, arrCode, depDate, depTime, special):
         # 실질적인 예약 기능
@@ -239,3 +258,51 @@ class Korail(object):
         
         #예매티켓에 대한 정보 array로 전달
         return labels
+    
+    ##텔레그램 봇 용 callback
+    def telebotResponse(self, reserveInfo):
+        result = reserveInfo
+        chatId = self.chatId
+        
+        if (result == "wrong"):
+            msg = "차편을 찾을 수 없거나, 검색에 문제가 생겼어요. 처음부터 다시 시도해 주세요."
+        elif (result["reserveSuc"]):
+            depDate = result["depDate"]
+            depTime = result["depTime"]
+            srcLocate = result["srcLocate"]
+            dstLocate = result["dstLocate"]
+            depTime = "{}:{}".format(depTime[0:2], depTime[2:4])
+            msg = """
+열차 예약에 성공했습니다!!
+예약에 성공한 열차 정보는 다음과 같습니다.
+===================
+출발역 : {}
+도착역 : {}
+출발일 : {}
+출발시각 : {}
+===================
+
+20분내에 사이트에서 결제를 완료하지 않으면 예약이 취소되니 서두르세요!
+https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
+""".format(srcLocate, dstLocate, depDate, depTime)
+        else :
+            msg = """
+알수 없는 오류로 예매에 실패했습니다. 처음부터 다시 시도해주세요.
+
+[문제가 없는데 계속 반복되는 경우, 이미 해당 열차가 예매가 되었을 수 있습니다. 사이트를 확인해주세요.]
+"""
+        self.telebotChangeState(chatId, msg, 0)
+        return None
+
+    
+    def telebotChangeState(self, chatId, msg, status):
+        callbackUrl = "https://127.0.0.1:8080/telebot"
+        print (chatId, msg, status)
+        param = {
+            "chatId": chatId,
+            "msg" : msg,
+            "status" : status
+        }
+        s = requests.session()
+        s.get(callbackUrl, params=param, verify=False)
+        return None
