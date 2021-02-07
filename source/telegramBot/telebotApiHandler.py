@@ -111,7 +111,7 @@ class Index(Resource):
                 if (initFlag):
                     self.sendMessage(chatId, getText)
                 else :
-                    msg = "[진행중인 예약프로세스가 없습니다]\n/start 를 입력하여 작업을 시작하세요.\n근철이 최고\n{}".format(getText)
+                    msg = "[진행중인 예약프로세스가 없습니다]\n/start 를 입력하여 작업을 시작하세요.\n"
                     self.sendMessage(chatId, msg)
         return make_response("OK")
     
