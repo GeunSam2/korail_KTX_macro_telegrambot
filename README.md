@@ -8,15 +8,17 @@
 
 ## 설정법
 
-### SSL 인증서(fullchain인증서, 개인키)
+### SSL 인증서(fullchain인증서, 개인키) 및 도메인 값 설정
 
 1. 텔레그램 api의 webhook을 수신할 때 설정할 도메인에 해당하는 SSL 인증서를 `/source/certs` 디렉토리에 위치시킨다. 풀체인 인증서와 개인키 파일 두개가 필요하다. 예시에서는 `fullchain.pem`, `privkey.pem`  라는 이름으로 두개의 파일을 설정하였다.
-2. `/nginx/wsgi.conf` 에 인증서 파일명을 명시하여 설정을 완료한다.
+2. server_name 부분에 인증서와 매칭되는 도메인명을 명시한다.
+3. `/nginx/wsgi.conf` 에 인증서 파일명을 명시하여 설정을 완료한다.
+
 
 ```config
 server {
     listen  8080; //서비스 포트
-    server_name telebot.modutech.win;
+    server_name example.domain.com; //사용할 도메인
 
     ssl                  on;
     ssl_certificate      /source/certs/fullchain.pem; //풀체인 인증서파일명
