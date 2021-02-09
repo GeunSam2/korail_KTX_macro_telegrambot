@@ -128,8 +128,13 @@ class Korail(object):
                 
                 #예약가능 여부 뽑기
                 items = dumy.find_all('td')
-                seatSpecial = items[4].img['alt'] ##특등석 예약가능 여부
-                seatNormal = items[5].img['alt']  ##일반석 예약가능 여부
+                try:
+                    seatSpecial = items[4].img['alt'] ##특등석 예약가능 여부
+                    seatNormal = items[5].img['alt']  ##일반석 예약가능 여부
+                except:
+                    ##특실이 없는 열차(ktx 아닌경우)
+                    seatSpecial = "예약불가" 
+                    seatNormal = "예약불가"  
 
                 #예약 필요 정보 뽑기
                 scriptItem = scriptItems[count].string.replace("\r\n","").replace("\t","").replace(" ","").split('"')[1:-1]
