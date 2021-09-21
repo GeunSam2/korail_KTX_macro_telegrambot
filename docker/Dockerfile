@@ -1,25 +1,21 @@
-FROM python
-
-RUN pip install flask && \
-pip install flask_restful && \
-pip install requests && \
-pip install flask-cors && \
-pip install bs4 && \
-pip install python-telegram-bot && \
-pip install pyOpenSSL && \
-pip install uwsgi && \
-pip install notebook
+FROM python:3.7
 
 RUN apt-get update && \
 apt-get install -y nginx
 
-
 COPY docker/entrypoint.sh /entrypoint.sh
+COPY docker/requirements.txt /requirements.txt
+
+RUN chmod 775 /entrypoint.sh
+RUN pip install -r /requirements.txt
+
 COPY source /source
 COPY nginx/wsgi.conf /etc/nginx/conf.d/wsgi.conf
 
-RUN chmod 775 /entrypoint.sh
+EXPOSE 8080 
+#EXPOSE 8888
+# API : 8080 / JUPYTER : 8888
 
-expose 8888 8080
+WORKDIR /source
 
 ENTRYPOINT /entrypoint.sh

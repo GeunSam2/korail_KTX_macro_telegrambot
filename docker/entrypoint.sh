@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd /source
-jupyter notebook --allow-root --ip 0.0.0.0 &
+#jupyter notebook --allow-root --ip 0.0.0.0 &
 uwsgi --ini /source/wsgi.ini
 nginx &
 
