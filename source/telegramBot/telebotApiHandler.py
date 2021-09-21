@@ -1,3 +1,4 @@
+from .korail2.korail2 import ReserveOption, TrainType
 from flask import Flask, request, jsonify, make_response
 from flask_restful import marshal_with, Resource, reqparse, fields
 from .korailReserve import Korail
@@ -25,6 +26,8 @@ class Index(Resource):
     # }
     userDict = {}
     
+
+    
     def manageProgress(self, chatId, action, data=""):
         #     !!lastAction!!
         #     0 : init
@@ -35,8 +38,14 @@ class Index(Resource):
         #     5 : dateInputSuc
         #     6 : srcLoateInputSuc
         #     7 : dstLocateInputSuc
-        #     8 : findingTicket
+        #     8 : depTimeInputSuc
+        #     9 : trainTypeInputSuc
+        #     10 : specialInputSuc
+        #     11 : findingTicket
         if (action == 0):
+            #debug
+            print (self.userDict)
+            #debug
             self.userDict[chatId]={
                 "inProgress": False,
                 "lastAction" : action,
@@ -56,8 +65,12 @@ class Index(Resource):
         elif (action == 6):
             self.inputDstLoate(chatId, data)
         elif (action == 7):
-            self.inputSpecial(chatId, data)
+            self.inputDepTime(chatId, data)
         elif (action == 8):
+            self.inputTrainType(chatId, data)
+        elif (action == 9):
+            self.inputSpecial(chatId, data)
+        elif (action == 10):
             self.startReserve(chatId, data)
         else :
             ##
@@ -93,7 +106,7 @@ class Index(Resource):
         if (getText == "/cancel"):
             self.cancelFunc(chatId)
             return make_response("OK")
-        elif (progressNum == 9):
+        elif (progressNum == 11):
             self.alreadyDoing(chatId)
             return make_response("OK")
         
@@ -263,61 +276,128 @@ class Index(Resource):
         self.userDict[chatId]["lastAction"] = 7
         msg = """
 도착역 입력이 완료되었습니다.
-특실 예약여부를 확인해 주십시오.
+열차 검색을 시작할 기준 시각정보를 입력해주세요.
 
-=================
-[1]. 일반실만 예매 진행
-[2]. 특실 포함 예매 진행
-=================
-
-1 또는 2 를 입력해 주십시오.
+형식은 HHMM (HH : 시, MM : 분)이며 0-23시 기준입니다. 반드시 4자리로 입력해 주십시오.
+(ex_ 13시 5분 이후 기차만 검색 : 1305) 
 """
 
         self.sendMessage(chatId, msg)
         return None
+
+    def inputDepTime(self, chatId, data):
+        if (len(str(data)) == 4 and str(data).isdecimal()):
+            self.userDict[chatId]["trainInfo"]["depTime"] = data
+            self.userDict[chatId]["lastAction"] = 8
+            msg = """
+기준 시각 입력이 완료되었습니다.
+이용할 열차의 타입을 선택해 주십시오.
+
+=================
+1. KTX 및 KTX-산천 열차만 예약
+2. 모든 열차 형식 포함하여 예약
+=================
+
+1 또는 2를 입력해 주십시오.
+"""
+        else:
+            msg = """입력하신 값이 HHMM 형식에 맞지 않습니다. 다시 입력해주세요."""
+
+        self.sendMessage(chatId, msg)
+        return None
+
+
+    def inputTrainType(self, chatId, data):
+        if(str(data) in ["1","2"]):
+            if (str(data) == "1"): 
+                trainType = TrainType.KTX
+                trainTypeShow = "KTX"
+            elif (str(data) == "2"): 
+                trainType = TrainType.ALL
+                trainTypeShow = "ALL"
+            self.userDict[chatId]["trainInfo"]["trainType"] = trainType
+            self.userDict[chatId]["trainInfo"]["trainTypeShow"] = trainTypeShow
+            self.userDict[chatId]["lastAction"] = 9
+            msg = """
+이용할 열차의 타입 입력이 완료되었습니다.
+특실 예매에 대한 타입을 입력해 주십시오.
+
+=================
+1. 일반실 우선 예약
+2. 일반실만 예약
+3. 특실 우선 예약
+4. 특실만 예약
+=================
+
+1, 2, 3, 4 중 하나를 선택해 주십시오.
+"""
+        else:
+            msg = """입력하신 값이 1,2 중 하나가 아닙니다. 다시 입력해주세요."""
+        self.sendMessage(chatId, msg)
+        return None
+
+
+
     
     def inputSpecial(self, chatId, data):
-        if(str(data) in ["1","2"]):
-            self.userDict[chatId]["trainInfo"]["specialInfo"] = data
-            self.userDict[chatId]["lastAction"] = 8
+        if(str(data) in ["1","2","3","4"]):
+            if (str(data) == "1"): 
+                specialInfo = ReserveOption.GENERAL_FIRST
+                specialInfoShow = ReserveOption.GENERAL_FIRST
+            elif (str(data) == "2"): 
+                specialInfo = ReserveOption.GENERAL_ONLY
+                specialInfoShow = ReserveOption.GENERAL_ONLY
+            elif (str(data) == "3"): 
+                specialInfo = ReserveOption.SPECIAL_FIRST
+                specialInfoShow = ReserveOption.SPECIAL_FIRST
+            elif (str(data) == "4"): 
+                specialInfo = ReserveOption.SPECIAL_ONLY
+                specialInfoShow = ReserveOption.SPECIAL_ONLY
+
+
+            self.userDict[chatId]["trainInfo"]["specialInfo"] = specialInfo
+            self.userDict[chatId]["trainInfo"]["specialInfoShow"] = specialInfoShow
+            self.userDict[chatId]["lastAction"] = 10
             depDate = self.userDict[chatId]["trainInfo"]["depDate"]
             srcLocate = self.userDict[chatId]["trainInfo"]["srcLocate"]
             dstLocate = self.userDict[chatId]["trainInfo"]["dstLocate"]
-            specialInfo = self.userDict[chatId]["trainInfo"]["specialInfo"]
-            msg = """
+            depTime = self.userDict[chatId]["trainInfo"]["depTime"]
+            trainTypeShow = self.userDict[chatId]["trainInfo"]["trainTypeShow"]
+            msg = f"""
 모든 정보 입력이 완료되었습니다.
 정보를 확인하십시오.
 ===================
-출발일 : {}
-출발역 : {}
-도착역 : {}
-특실여부 : {}
+출발일 : {depDate}
+출발역 : {srcLocate}
+도착역 : {dstLocate}
+검색기준시각 : {depTime}
+열차타입 : {trainTypeShow}
+특실여부 : {specialInfoShow}
 ===================
 
 'Y'또는 '예'를 입력하시면 예약을 시작합니다.
 'N'또는 '아니오'를 입력하시면 작업을 취소합니다.
 예약 완료에 오랜 시간이 걸릴 수 있습니다.
-""".format(depDate, srcLocate, dstLocate, specialInfo)
+"""
         else:
-            msg = """입력하신 값이 1 혹은 2가 아닙니다. 다시 입력해주세요."""
+            msg = """입력하신 값이 1,2,3,4 중 하나가 아닙니다. 다시 입력해주세요."""
         self.sendMessage(chatId, msg)
         return None
     
     def startReserve(self, chatId, data):
         if (str(data).upper() == "Y" or str(data) == "예"):
-            self.userDict[chatId]["lastAction"] = 9
+            self.userDict[chatId]["lastAction"] = 11
             username = self.userDict[chatId]["userInfo"]["korailId"]
             password = self.userDict[chatId]["userInfo"]["korailPw"]
             depDate = self.userDict[chatId]["trainInfo"]["depDate"]
             srcLocate = self.userDict[chatId]["trainInfo"]["srcLocate"]
             dstLocate = self.userDict[chatId]["trainInfo"]["dstLocate"]
+            depTime = self.userDict[chatId]["trainInfo"]["depTime"]
+            trainType = self.userDict[chatId]["trainInfo"]["trainType"]
             specialInfo = self.userDict[chatId]["trainInfo"]["specialInfo"]
-#             korail = Korail()
-#             korail.login(username, password)
-#             korail.setInfo(depDate, srcLocate, dstLocate, specialInfo, chatId)
-#             backProc = Process(target=korail.reserve, args=())
-#             backProc.start() 
-            cmd = "python /source/telegramBot/telebotBackProcess.py {} {} {} {} {} {} {} &".format(username, password, depDate, srcLocate, dstLocate, specialInfo, chatId)
+
+            cmd = f"python -m telegramBot.telebotBackProcess {username} {password} {depDate} {srcLocate} {dstLocate} {depTime}00 {trainType} {specialInfo} {chatId} &"
+            print(cmd)
             os.system(cmd)
             msg = """
 예약 프로그램 동작이 시작되었습니다.
@@ -340,18 +420,22 @@ class Index(Resource):
         depDate = self.userDict[chatId]["trainInfo"]["depDate"]
         srcLocate = self.userDict[chatId]["trainInfo"]["srcLocate"]
         dstLocate = self.userDict[chatId]["trainInfo"]["dstLocate"]
-        specialInfo = self.userDict[chatId]["trainInfo"]["specialInfo"]
-        msg = """
+        depTime = self.userDict[chatId]["trainInfo"]["depTime"]
+        trainTypeShow = self.userDict[chatId]["trainInfo"]["trainTypeShow"]
+        specialInfoShow = self.userDict[chatId]["trainInfo"]["specialInfoShow"]
+        msg = f"""
 현재 예매가 이미 진행중입니다.
 ===================
-출발일 : {}
-출발역 : {}
-도착역 : {}
-특실여부 : {}
+출발일 : {depDate}
+출발역 : {srcLocate}
+도착역 : {dstLocate}
+검색기준시각 : {depTime}
+열차타입 : {trainTypeShow}
+특실여부 : {specialInfoShow}
 ===================
 
 진행중인 예매를 취소하고 싶으시면 /cancel 을 입력해주세요.
-""".format(depDate, srcLocate, dstLocate, specialInfo)
+"""
         self.sendMessage(chatId, msg)
     
     def cancelFunc(self, chatId):
@@ -373,7 +457,8 @@ class Index(Resource):
             chatId = request.args.get('chatId')
             msg = request.args.get('msg')
             status = request.args.get('status')
-            if (status == 0):
+            if (str(status) == "0"):
+                print ("예약 완료되어 상태 0으로 초기화")
                 self.manageProgress(chatId, 0)
             self.sendMessage(chatId, msg)
         return make_response("OK")
