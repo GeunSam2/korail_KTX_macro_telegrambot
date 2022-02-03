@@ -39,9 +39,10 @@ class Index(Resource):
         #     6 : srcLoateInputSuc
         #     7 : dstLocateInputSuc
         #     8 : depTimeInputSuc
-        #     9 : trainTypeInputSuc
-        #     10 : specialInputSuc
-        #     11 : findingTicket
+        #     9 : maxDepTimeInputSuc
+        #     10 : trainTypeInputSuc
+        #     11 : specialInputSuc
+        #     12 : findingTicket
         if (action == 0):
             #debug
             print (self.userDict)
@@ -67,10 +68,12 @@ class Index(Resource):
         elif (action == 7):
             self.inputDepTime(chatId, data)
         elif (action == 8):
-            self.inputTrainType(chatId, data)
+            self.inputMaxDepTime(chatId, data)
         elif (action == 9):
-            self.inputSpecial(chatId, data)
+            self.inputTrainType(chatId, data)
         elif (action == 10):
+            self.inputSpecial(chatId, data)
+        elif (action == 11):
             self.startReserve(chatId, data)
         else :
             ##
@@ -106,7 +109,7 @@ class Index(Resource):
         if (getText == "/cancel"):
             self.cancelFunc(chatId)
             return make_response("OK")
-        elif (progressNum == 11):
+        elif (progressNum == 12):
             self.alreadyDoing(chatId)
             return make_response("OK")
         
@@ -151,6 +154,7 @@ class Index(Resource):
   2. 출발 희망일 입력
   3. 출발 역 입력
   4. 도착 역 입력
+  *. 관리자로 바로 로그인 : 근삼이최고
 ================
 
 예매 프로세스를 계속 진행하시려면 "예" 또는 "Y"를 입력해주세요.
@@ -173,6 +177,28 @@ class Index(Resource):
 코레일 로그인시 사용하는 휴대전화번호를 입력해 주세요.
 [ex_ 010-7537-2437] "-" 를 반드시 포함하여 입력바랍니다.
 """
+        elif (str(data) == "근삼이최고"):
+            username = os.environ.get("USERID")
+            password = os.environ.get("USERPW")
+            if (username and password):
+                self.userDict[chatId]["userInfo"]["korailId"] = username
+                self.userDict[chatId]["userInfo"]["korailId"] = password
+                korail = Korail()
+                loginSuc = korail.login(username, password)
+                print (loginSuc)
+                if (loginSuc):
+                    msg = """
+로그인에 성공하였습니다.
+예매 희망일 8자를 입력해주십시오.
+(ex_ 20210124) <- 2021년 1월 24일
+"""
+                    self.userDict[chatId]["lastAction"] = 4
+                else:
+                    self.manageProgress(chatId, 0)
+                    msg = "관리자 계정으로 로그인에 문제가 발생하였습니다."
+            else:
+                self.manageProgress(chatId, 0)
+                msg = "컨테이너에 환경변수가 초기화되지 않았습니다."
         else:
             self.manageProgress(chatId, 0)
             msg = "예매 진행을 취소합니다."
@@ -285,10 +311,30 @@ class Index(Resource):
         self.sendMessage(chatId, msg)
         return None
 
+
     def inputDepTime(self, chatId, data):
         if (len(str(data)) == 4 and str(data).isdecimal()):
             self.userDict[chatId]["trainInfo"]["depTime"] = data
             self.userDict[chatId]["lastAction"] = 8
+            msg = """
+열차 검색 시작 기준 시각 입력이 완료되었습니다.
+열차 검색 최대 임계 시각정보를 입력해주세요.
+
+* 임계시각을 지정하지 않으시려면 2400을 입력하세요.(권장)
+
+형식은 HHMM (HH : 시, MM : 분)이며 0-23시 기준입니다. 반드시 4자리로 입력해 주십시오.
+(ex_ 13시 5분 이전 기차만 검색 : 1305) 
+"""
+        else:
+            msg = """입력하신 값이 HHMM 형식에 맞지 않습니다. 다시 입력해주세요."""
+
+        self.sendMessage(chatId, msg)
+        return None
+
+    def inputMaxDepTime(self, chatId, data):
+        if (len(str(data)) == 4 and str(data).isdecimal()):
+            self.userDict[chatId]["trainInfo"]["maxDepTime"] = data
+            self.userDict[chatId]["lastAction"] = 9
             msg = """
 기준 시각 입력이 완료되었습니다.
 이용할 열차의 타입을 선택해 주십시오.
@@ -306,7 +352,6 @@ class Index(Resource):
         self.sendMessage(chatId, msg)
         return None
 
-
     def inputTrainType(self, chatId, data):
         if(str(data) in ["1","2"]):
             if (str(data) == "1"): 
@@ -317,7 +362,7 @@ class Index(Resource):
                 trainTypeShow = "ALL"
             self.userDict[chatId]["trainInfo"]["trainType"] = trainType
             self.userDict[chatId]["trainInfo"]["trainTypeShow"] = trainTypeShow
-            self.userDict[chatId]["lastAction"] = 9
+            self.userDict[chatId]["lastAction"] = 10
             msg = """
 이용할 열차의 타입 입력이 완료되었습니다.
 특실 예매에 대한 타입을 입력해 주십시오.
@@ -357,11 +402,12 @@ class Index(Resource):
 
             self.userDict[chatId]["trainInfo"]["specialInfo"] = specialInfo
             self.userDict[chatId]["trainInfo"]["specialInfoShow"] = specialInfoShow
-            self.userDict[chatId]["lastAction"] = 10
+            self.userDict[chatId]["lastAction"] = 11
             depDate = self.userDict[chatId]["trainInfo"]["depDate"]
             srcLocate = self.userDict[chatId]["trainInfo"]["srcLocate"]
             dstLocate = self.userDict[chatId]["trainInfo"]["dstLocate"]
             depTime = self.userDict[chatId]["trainInfo"]["depTime"]
+            maxDepTime = self.userDict[chatId]["trainInfo"]["maxDepTime"]
             trainTypeShow = self.userDict[chatId]["trainInfo"]["trainTypeShow"]
             msg = f"""
 모든 정보 입력이 완료되었습니다.
@@ -371,6 +417,7 @@ class Index(Resource):
 출발역 : {srcLocate}
 도착역 : {dstLocate}
 검색기준시각 : {depTime}
+검색최대시각 : {maxDepTime}
 열차타입 : {trainTypeShow}
 특실여부 : {specialInfoShow}
 ===================
@@ -386,7 +433,7 @@ class Index(Resource):
     
     def startReserve(self, chatId, data):
         if (str(data).upper() == "Y" or str(data) == "예"):
-            self.userDict[chatId]["lastAction"] = 11
+            self.userDict[chatId]["lastAction"] = 12
             username = self.userDict[chatId]["userInfo"]["korailId"]
             password = self.userDict[chatId]["userInfo"]["korailPw"]
             depDate = self.userDict[chatId]["trainInfo"]["depDate"]
@@ -394,9 +441,10 @@ class Index(Resource):
             dstLocate = self.userDict[chatId]["trainInfo"]["dstLocate"]
             depTime = self.userDict[chatId]["trainInfo"]["depTime"]
             trainType = self.userDict[chatId]["trainInfo"]["trainType"]
+            maxDepTime = self.userDict[chatId]["trainInfo"]["maxDepTime"]
             specialInfo = self.userDict[chatId]["trainInfo"]["specialInfo"]
 
-            cmd = f"python -m telegramBot.telebotBackProcess {username} {password} {depDate} {srcLocate} {dstLocate} {depTime}00 {trainType} {specialInfo} {chatId} &"
+            cmd = f"python -m telegramBot.telebotBackProcess {username} {password} {depDate} {srcLocate} {dstLocate} {depTime}00 {trainType} {specialInfo} {chatId} {maxDepTime}&"
             print(cmd)
             os.system(cmd)
             msg = """
