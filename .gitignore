@@ -3,3 +3,4 @@
 certs_real/*
 *.pem
 source/telegramBot/botToken.py
+botToken.py
