@@ -182,7 +182,7 @@ class Index(Resource):
             password = os.environ.get("USERPW")
             if (username and password):
                 self.userDict[chatId]["userInfo"]["korailId"] = username
-                self.userDict[chatId]["userInfo"]["korailId"] = password
+                self.userDict[chatId]["userInfo"]["korailPw"] = password
                 korail = Korail()
                 loginSuc = korail.login(username, password)
                 print (loginSuc)
