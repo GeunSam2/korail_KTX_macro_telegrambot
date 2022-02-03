@@ -81,7 +81,7 @@ class Korail(object):
     #     self.reserveInfo['special'] = special #Option Default "N" => Don't reserve Special Seat
     #     self.chatId = chatId ##Telegram Chat bot에서 callback 받을때 전달 받아야 함
     
-    def reserve(self, depDate, srcLocate, dstLocate, depTime='000000', trainType=TrainType.KTX, special=ReserveOption.GENERAL_FIRST, chatId=""):
+    def reserve(self, depDate, srcLocate, dstLocate, depTime='000000', trainType=TrainType.KTX, special=ReserveOption.GENERAL_FIRST, chatId="", maxDepTime="2400"):
         # while (not self.reserveInfo['reserveSuc']):
         #     self.getTickets()
         #     self.reserveInfo['reserveSuc'] = False
@@ -154,6 +154,8 @@ class Korail(object):
         while not reserveOne:
             try:
                 trains = self.korailObj.search_train(srcLocate, dstLocate, depDate, depTime, train_type=trainType)
+                timeL = int("".join(str(trains[0]).split("(")[1].split("~")[0].split(":")))
+                if (timeL >= maxDepTime): trains = []
             except NoResultsError:
                 trains = []
             
