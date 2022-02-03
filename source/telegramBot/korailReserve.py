@@ -154,8 +154,8 @@ class Korail(object):
         while not reserveOne:
             try:
                 trains = self.korailObj.search_train(srcLocate, dstLocate, depDate, depTime, train_type=trainType)
-                timeL = int("".join(str(trains[0]).split("(")[1].split("~")[0].split(":")))
-                if (timeL >= maxDepTime): trains = []
+                timeL = "".join(str(trains[0]).split("(")[1].split("~")[0].split(":"))
+                if (int(timeL) >= int(maxDepTime)): trains = []
             except NoResultsError:
                 trains = []
             
