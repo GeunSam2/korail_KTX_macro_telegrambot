@@ -3,7 +3,7 @@ from .korailReserve import Korail
 import sys
 sys.setrecursionlimit(10**7)
 
-#def reserve(self, depDate, srcLocate, dstLocate, depTime='000000', trainType=TrainType.KTX, special=ReserveOption.GENERAL_FIRST, chatId=""):
+#def reserve(self, depDate, srcLocate, dstLocate, depTime='000000', trainType=TrainType.KTX, special=ReserveOption.GENERAL_FIRST, chatId="", maxDepTime'2400'):
 class BackProcess(object):
     
     def __init__(self):
@@ -16,13 +16,14 @@ class BackProcess(object):
         self.trainType = sys.argv[7]
         self.specialInfo = sys.argv[8]
         self.chatId = sys.argv[9]
+        self.maxDepTime = sys.argv[10]
         self.korail = Korail()
         self.korail.login(self.username, self.password)
     
     def run(self):
         
         try:
-            self.korail.reserve(self.depDate, self.srcLocate, self.dstLocate, self.depTime, self.trainType, self.specialInfo, self.chatId)
+            self.korail.reserve(self.depDate, self.srcLocate, self.dstLocate, self.depTime, self.trainType, self.specialInfo, self.chatId, self.maxDepTime)
         except Exception as e: 
             print(e)
             msg = "에러발생 : {}".format(e)
