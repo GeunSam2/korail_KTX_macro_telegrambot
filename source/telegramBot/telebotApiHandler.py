@@ -91,7 +91,7 @@ class Index(Resource):
         return inProgress, progressNum
     
     def post(self):
-#         print (json.dumps(request.json, sort_keys=True, indent=4))
+        print (json.dumps(request.json, sort_keys=True, indent=4))
         if ("edited_message" in request.json):
             pass
             return make_response("OK")
