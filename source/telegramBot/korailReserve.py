@@ -50,6 +50,7 @@ class Korail(object):
         self.reserveInfo['trainType'] = trainType
         self.reserveInfo['special'] = special #Option Default "N" => Don't reserve Special Seat
         self.reserveInfo['maxDepTime'] = maxDepTime
+        currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
         print ("{} {} 작업 시작".format(currentTime, self.reserveInfo))
         self.chatId = chatId ##Telegram Chat bot에서 callback 받을때 전달 받아야 함
         reserveOne = None
@@ -72,7 +73,6 @@ class Korail(object):
                     print ('발견한 열차 놓침...')
 
             #Sleep
-            currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
             time.sleep(self.interval)
 
             #Out of While loop
