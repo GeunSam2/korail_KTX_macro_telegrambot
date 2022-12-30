@@ -49,6 +49,8 @@ class Korail(object):
         self.reserveInfo['depTime'] = depTime
         self.reserveInfo['trainType'] = trainType
         self.reserveInfo['special'] = special #Option Default "N" => Don't reserve Special Seat
+        self.reserveInfo['maxDepTime'] = maxDepTime
+        print ("{} {} 작업 시작".format(currentTime, self.reserveInfo))
         self.chatId = chatId ##Telegram Chat bot에서 callback 받을때 전달 받아야 함
         reserveOne = None
         while not reserveOne:
@@ -71,7 +73,6 @@ class Korail(object):
 
             #Sleep
             currentTime = time.strftime('%H:%M:%S', time.localtime(time.time()))
-            # print ("{} {}".format(currentTime, self.reserveInfo))
             time.sleep(self.interval)
 
             #Out of While loop
@@ -111,8 +112,8 @@ https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
 
     
     def telebotChangeState(self, chatId, msg, status):
-        #callbackUrl = "https://127.0.0.1:8080/telebot" #if you use ssl inside docker, use this
-        callbackUrl = "http://127.0.0.1:8080/telebot"
+        callbackUrl = "https://127.0.0.1:8080/telebot" #if you use ssl inside docker, use this
+        # callbackUrl = "http://127.0.0.1:8080/telebot"
         print (chatId, msg, status)
         param = {
             "chatId": chatId,
