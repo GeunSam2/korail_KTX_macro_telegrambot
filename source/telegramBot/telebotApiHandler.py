@@ -2,7 +2,6 @@ from .korail2.korail2 import ReserveOption, TrainType
 from flask import Flask, request, jsonify, make_response
 from flask_restful import marshal_with, Resource, reqparse, fields
 from .korailReserve import Korail
-from .botToken import botToken
 from multiprocessing import Process
 import requests
 import time
@@ -13,7 +12,8 @@ import os
 class Index(Resource):
     
     s = requests.session()
-    sendUrl = "https://api.telegram.org/bot{}".format(botToken)
+    BOTTOEKN = os.environ.get('BOTTOEKN')
+    sendUrl = "https://api.telegram.org/bot{}".format(BOTTOEKN)
     
     #userDict : Use like DB.
     # {
@@ -93,6 +93,9 @@ class Index(Resource):
     def post(self):
         print (json.dumps(request.json, sort_keys=True, indent=4))
         if ("edited_message" in request.json):
+            pass
+            return make_response("OK")
+        if ("my_chat_member" in request.json):
             pass
             return make_response("OK")
         try:
