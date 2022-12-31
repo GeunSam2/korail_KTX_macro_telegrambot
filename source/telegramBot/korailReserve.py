@@ -112,8 +112,8 @@ https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
 
     
     def telebotChangeState(self, chatId, msg, status):
-        callbackUrl = "https://127.0.0.1:8080/telebot" #if you use ssl inside docker, use this
-        # callbackUrl = "http://127.0.0.1:8080/telebot"
+        # callbackUrl = "https://127.0.0.1:8080/telebot" #if you use ssl inside docker, use this
+        callbackUrl = "http://127.0.0.1:8080/telebot"
         print (chatId, msg, status)
         param = {
             "chatId": chatId,
