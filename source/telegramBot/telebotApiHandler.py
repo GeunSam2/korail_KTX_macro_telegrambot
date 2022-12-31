@@ -47,7 +47,7 @@ class Index(Resource):
             #debug
             print (self.userDict)
             #debug
-            self.userDict[chatId]={
+            self.userDict[int(chatId)]={
                 "inProgress": False,
                 "lastAction" : action,
                 "userInfo" : {},
