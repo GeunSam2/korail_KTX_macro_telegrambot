@@ -235,7 +235,7 @@ class Index(Resource):
             msg = """
 로그인에 성공하였습니다.
 예매 희망일 8자를 입력해주십시오.
-(ex_ 20210124) <- 2021년 1월 24일
+(ex_ 20230101) <- 2023년 1월 1일
 """
             self.userDict[chatId]["lastAction"] = 4
             self.sendMessage(chatId, msg)
