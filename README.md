@@ -1,5 +1,7 @@
 # 코레일 KTX 예매 텔레그램 챗봇
 
+> 아... 지금 보니까 전부 다 리펙토링 하고 싶은데 귀찮다....
+
 ## 주의사항
 
 1. 귀경길 기차 예매를 하지 못한 안타까운 영혼들을 위해 만든 프로그램이므로, 개인용 목적이 아닌 상업적 목적등으로 이용하는 것을 엄중히 금합니다.
@@ -36,11 +38,7 @@ server {
 
 ### 텔레그램 봇 토큰 설정
 
-`/source/telegramBot/botToken.py` 파일의 botToken 변수의 값으로 텔레그램 봇 API 토큰을 설정한다.(텔레그램 봇 생성시 BotFather가 전달해 주는 값을 주면 된다.)
-
-```python
-botToken="123456789:AAFqYK2l6uovPVJ_7abcabcabcabcabc" #예시
-```
+환경변수로 `BOTTOEKN` 에 토큰 전달
 
 ### 도커 build
 
