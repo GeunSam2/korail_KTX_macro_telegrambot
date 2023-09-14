@@ -59,7 +59,10 @@ class Index(Resource):
             self.userDict[chatId]={
                 "inProgress": False,
                 "lastAction" : action,
-                "userInfo" : {},
+                "userInfo" : {
+                    "korailId": "no-login-yet", 
+                    "korailPw": "no-login-yet"
+                },
                 "trainInfo" : {},
                 "pid": 9999999
             }
