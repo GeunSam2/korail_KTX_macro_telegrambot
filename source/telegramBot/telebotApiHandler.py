@@ -8,6 +8,8 @@ import time
 import base64
 import json
 import os
+import subprocess
+import signal
 
 class Index(Resource):
     
@@ -17,16 +19,26 @@ class Index(Resource):
     
     #userDict : Use like DB.
     # {
-    #   "123123": {
+    #   123123: {
     #     "inProgress": True,
     #     "lastAction": "",
     #     "userInfo": { "korailId": "010-1111-1111", "korailPw": "123123" },
     #     "trainInfo": {"srcLocate":"광명", "dstLocate": "광주송정", "depDate": "20210204"}
+    #     "pid": 9999999
     #   }
     # }
     userDict = {}
-    
 
+    #runningStatus : Use like DB.
+    # {
+        # 123123: {
+        #     "pid": 9999999,
+        # } 
+    # }
+    runningStatus = {}
+
+    #Group for get notification
+    subscribes = []
     
     def manageProgress(self, chatId, action, data=""):
         #     !!lastAction!!
@@ -44,16 +56,19 @@ class Index(Resource):
         #     11 : specialInputSuc
         #     12 : findingTicket
         if (action == 0):
-            #debug
-            print (self.userDict)
-            #debug
-            self.userDict[int(chatId)]={
+            self.userDict[chatId]={
                 "inProgress": False,
                 "lastAction" : action,
                 "userInfo" : {},
-                "trainInfo" : {}
+                "trainInfo" : {},
+                "pid": 9999999
             }
-        elif (action == 1):
+
+        if (len(self.runningStatus) > 0 and chatId not in dict.keys(self.runningStatus)):
+            data = "현재 다른 유저가 이용중입니다. 급하면 관리자에게 문의하세요."
+            self.sendMessage(chatId, data)
+
+        if (action == 1):
             self.startAccept(chatId, data)
         elif (action == 2):
             self.inputId(chatId, data)
@@ -105,6 +120,7 @@ class Index(Resource):
             initFlag = True
             getText = "코레일 예약봇입니다.\n시작하시려면 /start 를 입력해주세요."
         chatId = request.json['message']['chat']['id']
+        chatId = int(chatId)
         
         inProgress, progressNum = self.getUserProgress(chatId)
         print ("CHATID : {} , TEXT : {}, InProgress : {}, Progress : {}".format(chatId, getText, inProgress, progressNum))
@@ -118,8 +134,16 @@ class Index(Resource):
         
         if (getText == "/start"):
             self.startFunc(chatId)
-        elif (getText == "/testFunc"):
-            self.testFunc(chatId)
+        elif (getText == "/subscribe"):
+            self.subscribe(chatId)
+        elif (getText == "/status"):
+            self.getStatusInfo(chatId)
+        elif (getText == "/cancelall"):
+            self.cancelAll(chatId)
+        elif (getText == "/allusers"):
+            self.getAllUsers(chatId)
+        elif (getText.split(' ')[0] == '/broadcast'):
+            self.broadCast(getText)
         elif (getText[0] == "/"):
             getText = "잘못된 명령어 입니다."
             self.sendMessage(chatId, getText)
@@ -383,9 +407,6 @@ class Index(Resource):
             msg = """입력하신 값이 1,2 중 하나가 아닙니다. 다시 입력해주세요."""
         self.sendMessage(chatId, msg)
         return None
-
-
-
     
     def inputSpecial(self, chatId, data):
         if(str(data) in ["1","2","3","4"]):
@@ -447,9 +468,15 @@ class Index(Resource):
             maxDepTime = self.userDict[chatId]["trainInfo"]["maxDepTime"]
             specialInfo = self.userDict[chatId]["trainInfo"]["specialInfo"]
 
-            cmd = f"python -m telegramBot.telebotBackProcess {username} {password} {depDate} {srcLocate} {dstLocate} {depTime}00 {trainType} {specialInfo} {chatId} {maxDepTime}&"
-            print(cmd)
-            os.system(cmd)
+            argument = f"{username} {password} {depDate} {srcLocate} {dstLocate} {depTime}00 {trainType} {specialInfo} {chatId} {maxDepTime}"
+            print(argument)
+            proc = subprocess.Popen(['python', '-m', 'telegramBot.telebotBackProcess', argument], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            print (proc.pid)
+            self.userDict[chatId]['pid'] = proc.pid
+            self.runningStatus[chatId] = {
+                "pid": proc.pid,
+                "korailId": self.userDict[chatId]['userInfo']['korailId']
+            }
             msg = """
 예약 프로그램 동작이 시작되었습니다.
 매진된 자리에 공석이 생길 때 까지 근삼봇이 열심히 찾아볼게요!
@@ -490,11 +517,19 @@ class Index(Resource):
         self.sendMessage(chatId, msg)
     
     def cancelFunc(self, chatId):
+        userPid = self.userDict[chatId]["pid"]
+        if userPid != 9999999:
+            os.kill(userPid, signal.SIGTERM)
+            print (f'실행중인 프로세스 {userPid}를 종료합니다.')
+
+            del self.runningStatus[chatId]
+            msgToSubscribers = f'{self.userDict[chatId]["userInfo"]["korailId"]}의 예약이 종료되었습니다.'
+            self.sendToSubscribers(msgToSubscribers)
+                
         self.manageProgress(chatId, 0)
         msg = "예약이 취소되었습니다."
         self.sendMessage(chatId, msg)
         
-        ##이미 시작된 예약을 취소하는 기능은 아직 미구현
         return None
     
     
@@ -508,36 +543,62 @@ class Index(Resource):
             chatId = request.args.get('chatId')
             msg = request.args.get('msg')
             status = request.args.get('status')
+            chatId = int(chatId)
             if (str(status) == "0"):
                 print ("예약 완료되어 상태 0으로 초기화")
                 self.manageProgress(chatId, 0)
             self.sendMessage(chatId, msg)
+
+            del self.runningStatus[chatId]
+            msgToSubscribers = f'{self.userDict[chatId]["userInfo"]["korailId"]}의 예약이 종료되었습니다.'
+            self.sendToSubscribers(msgToSubscribers)
         return make_response("OK")
-    
-    
-    ##개발자 편하라고 만든 예약함수
-    def testFunc(self, chatId):
-        self.userDict[chatId]["inProgress"] = True
-        self.userDict[chatId]["lastAction"] = 9
-        username = "개발자 ID"
-        password = "개발자 비번"
-        depDate = "20210214" 
-        srcLocate = "광주송정"
-        dstLocate = "광명"
-        specialInfo = "1" 
-        self.userDict[chatId]["trainInfo"]["depDate"] = depDate
-        self.userDict[chatId]["trainInfo"]["srcLocate"] = srcLocate
-        self.userDict[chatId]["trainInfo"]["dstLocate"] = dstLocate
-        self.userDict[chatId]["trainInfo"]["specialInfo"] = specialInfo
-        cmd = "python /source/telegramBot/telebotBackProcess.py {} {} {} {} {} {} {} &".format(username, password, depDate, srcLocate, dstLocate, specialInfo, chatId)
-        os.system(cmd)
-        msg = """
-예약 프로그램 동작이 시작되었습니다.
-매진된 자리에 공석이 생길 때 까지 근삼봇이 열심히 찾아볼게요!
-예약에 성공하면 여기로 다시 알려줄게요!
-"""       
-        self.sendMessage(chatId, msg)
-        return None
         
+    def subscribe(self, chatId):
+        self.subscribes.append(chatId)
+        data = "열차 이용정보 구독 설정이 완료되었습니다."
+        self.sendMessage(chatId, data)
+
+    def sendToSubscribers(self, data):
+        for chatId in self.subscribes:
+            self.sendMessage(chatId, data)
                
-        
+    def getStatusInfo(self, chatId):
+        count = len(self.runningStatus)
+        usersKorailIds = [state["korailId"] for state in dict.values(self.runningStatus)]
+        data = f"총 {count}개의 예약이 실행중입니다. 이용중인 사용자 : {usersKorailIds}"
+        self.sendMessage(chatId, data)
+
+    def cancelAll(self, chatId):
+        count = len(self.runningStatus)
+        pids = [state["pid"] for state in dict.values(self.runningStatus)]
+        usersKorailIds = [state["korailId"] for state in dict.values(self.runningStatus)]
+        usersChatId = dict.keys(self.runningStatus)
+
+        for pid in pids:
+            os.kill(pid, signal.SIGTERM)
+            print (f"프로세스 {pid}가 종료되었습니다.")
+
+        dataForManager = f"총 {count}개의 진행중인 예약을 종료했습니다. 이용중이던 사용자 : {usersKorailIds}"
+        self.sendMessage(chatId, dataForManager)
+
+        dataForUser = "관리자에 의해 실행중이던 예약이 강제 종료됩니다. 꼬우면 관리자에게 연락하세요."
+        for user in usersChatId:
+            self.sendMessage(user, dataForUser)
+
+        self.runningStatus = {}
+
+    def getAllUsers(self, chatId):
+        allUsers = [user["userInfo"]["korailId"] for user in dict.values(self.userDict)]
+        data = f"총 {len(allUsers)}명의 유저가 있습니다 : {allUsers}"
+        self.sendMessage(chatId, data)
+
+    def broadCast(self, getText):
+        texts = getText.split('/boradcast ')
+        allUsers = [user["userInfo"]["korailId"] for user in dict.values(self.userDict)]
+        if (len(texts) > 1):
+            for user in allUsers:
+                self.sendMessage(user, texts[1])
+        else:
+            for user in allUsers:
+                self.sendMessage(user, "앙 기모띠")
