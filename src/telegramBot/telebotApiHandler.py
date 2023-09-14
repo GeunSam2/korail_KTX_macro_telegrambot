@@ -66,10 +66,12 @@ class Index(Resource):
                 "trainInfo" : {},
                 "pid": 9999999
             }
+            return
 
         if (len(self.runningStatus) > 0 and chatId not in dict.keys(self.runningStatus)):
             data = "현재 다른 유저가 이용중입니다. 급하면 관리자에게 문의하세요."
             self.sendMessage(chatId, data)
+            return
 
         if (action == 1):
             self.startAccept(chatId, data)
