@@ -475,11 +475,13 @@ class Index(Resource):
             maxDepTime = self.userDict[chatId]["trainInfo"]["maxDepTime"]
             specialInfo = self.userDict[chatId]["trainInfo"]["specialInfo"]
 
-            argument = [username, password, depDate, 
+            arguments = [username, password, depDate, 
                         srcLocate, dstLocate, f'{depTime}00', 
                         trainType, specialInfo, chatId, maxDepTime]
-            print(argument)
-            proc = subprocess.Popen(['python', '-m', 'telegramBot.telebotBackProcess'] + argument)
+            arguments = [str(argument) for argument in arguments]
+            print(arguments)
+            cmd = ['python', '-m', 'telegramBot.telebotBackProcess'] + arguments
+            proc = subprocess.Popen(cmd)
             self.userDict[chatId]['pid'] = proc.pid
             self.runningStatus[chatId] = {
                 "pid": proc.pid,
