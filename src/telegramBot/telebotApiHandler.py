@@ -56,16 +56,22 @@ class Index(Resource):
         #     11 : specialInputSuc
         #     12 : findingTicket
         if (action == 0):
-            self.userDict[chatId]={
-                "inProgress": False,
-                "lastAction" : action,
-                "userInfo" : {
-                    "korailId": "no-login-yet", 
-                    "korailPw": "no-login-yet"
-                },
-                "trainInfo" : {},
-                "pid": 9999999
-            }
+            if (chatId in self.userDict):
+                self.userDict[chatId]["inProgress"] = False
+                self.userDict[chatId]["lastAction"] = 0
+                self.userDict[chatId]["trainInfo"] = {}
+                self.userDict[chatId]["pid"] = 9999999
+            else:
+                self.userDict[chatId]={
+                    "inProgress": False,
+                    "lastAction" : 0,
+                    "userInfo" : {
+                        "korailId": "no-login-yet", 
+                        "korailPw": "no-login-yet"
+                    },
+                    "trainInfo" : {},
+                    "pid": 9999999
+                }
             return
 
         if (len(self.runningStatus) > 0 and chatId not in dict.keys(self.runningStatus)):
@@ -559,15 +565,15 @@ class Index(Resource):
             msg = request.args.get('msg')
             status = request.args.get('status')
             chatId = int(chatId)
+
+            if (str(status) == "0"):
+                print ("예약 완료되어 상태 0으로 초기화")
+                self.manageProgress(chatId, 0)
             self.sendMessage(chatId, msg)
 
             del self.runningStatus[chatId]
             msgToSubscribers = f'{self.userDict[chatId]["userInfo"]["korailId"]}의 예약이 종료되었습니다.'
             self.sendToSubscribers(msgToSubscribers)
-
-            if (str(status) == "0"):
-                print ("예약 완료되어 상태 0으로 초기화")
-                self.manageProgress(chatId, 0)
         return make_response("OK")
         
     def subscribe(self, chatId):
