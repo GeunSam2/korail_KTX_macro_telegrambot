@@ -146,14 +146,14 @@ class Index(Resource):
             self.broadCast(getText)
         elif (getText == "/help"):
             self.returnHelp(chatId)
-        elif (getText[0] == "/"):
-            getText = "잘못된 명령어 입니다."
-            self.sendMessage(chatId, getText)
         elif (progressNum == 12):
             self.alreadyDoing(chatId)
             return make_response("OK")
         elif (getText == "/start"):
             self.startFunc(chatId)
+        elif (getText[0] == "/"):
+            getText = "잘못된 명령어 입니다."
+            self.sendMessage(chatId, getText)
         else :
             if (inProgress):
                 self.manageProgress(chatId, progressNum, getText)
