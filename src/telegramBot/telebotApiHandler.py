@@ -558,14 +558,15 @@ class Index(Resource):
             msg = request.args.get('msg')
             status = request.args.get('status')
             chatId = int(chatId)
-            if (str(status) == "0"):
-                print ("예약 완료되어 상태 0으로 초기화")
-                self.manageProgress(chatId, 0)
             self.sendMessage(chatId, msg)
 
             del self.runningStatus[chatId]
             msgToSubscribers = f'{self.userDict[chatId]["userInfo"]["korailId"]}의 예약이 종료되었습니다.'
             self.sendToSubscribers(msgToSubscribers)
+
+            if (str(status) == "0"):
+                print ("예약 완료되어 상태 0으로 초기화")
+                self.manageProgress(chatId, 0)
         return make_response("OK")
         
     def subscribe(self, chatId):
