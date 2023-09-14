@@ -484,6 +484,10 @@ class Index(Resource):
                 "pid": proc.pid,
                 "korailId": self.userDict[chatId]['userInfo']['korailId']
             }
+
+            msgToSubscribers = f"{username}의 {srcLocate}에서 {dstLocate}로 {depDate}에 출발하는 열차 예약이 시작되었습니다."
+            self.sendToSubscribers(msgToSubscribers)
+
             msg = """
 예약 프로그램 동작이 시작되었습니다.
 매진된 자리에 공석이 생길 때 까지 근삼봇이 열심히 찾아볼게요!

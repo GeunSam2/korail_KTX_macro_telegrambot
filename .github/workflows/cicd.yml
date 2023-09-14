@@ -44,7 +44,7 @@ jobs:
                 docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
                 docker pull geunsam2/korailbot:latest
                 docker rm -f korailreserve
-                docker run -d \
+                docker run -it -d \
                     -p 8080:8080 \
                     --restart always \
                     -e USERID='${{ secrets.ADMIN_USERID }}' \
