@@ -14,8 +14,8 @@ import signal
 class Index(Resource):
     
     s = requests.session()
-    BOTTOEKN = os.environ.get('BOTTOEKN')
-    sendUrl = "https://api.telegram.org/bot{}".format(BOTTOEKN)
+    BOTTOKEN = os.environ.get('BOTTOKEN')
+    sendUrl = "https://api.telegram.org/bot{}".format(BOTTOKEN)
     
     #userDict : Use like DB.
     # {
@@ -144,6 +144,8 @@ class Index(Resource):
             self.getAllUsers(chatId)
         elif (getText.split(' ')[0] == '/broadcast'):
             self.broadCast(getText)
+        elif (getText == "/help"):
+            self.returnHelp(chatId)
         elif (getText[0] == "/"):
             getText = "잘못된 명령어 입니다."
             self.sendMessage(chatId, getText)
@@ -602,3 +604,14 @@ class Index(Resource):
         else:
             for user in allUsers:
                 self.sendMessage(user, "앙 기모띠")
+
+    def returnHelp(self, chatId):
+        msg = """
+- 예약 시작 : /start
+- 구독 시작 : /subscribe
+- 예약 상태 확인 : /status
+- 전체 취소 : /cancelall
+- 전체 유저 확인 : /allusers
+- 공지 : /broadcast [메시지]
+"""
+        self.sendMessage(chatId, msg)
