@@ -600,6 +600,7 @@ class Index(Resource):
         dataForUser = "관리자에 의해 실행중이던 예약이 강제 종료됩니다. 꼬우면 관리자에게 연락하세요."
         for user in usersChatId:
             self.sendMessage(user, dataForUser)
+            self.manageProgress(user, 0)
 
         self.runningStatus = {}
 
