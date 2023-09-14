@@ -600,7 +600,7 @@ class Index(Resource):
 
     def broadCast(self, getText):
         texts = getText.split('/boradcast ')
-        allUsers = [user["userInfo"]["korailId"] for user in dict.values(self.userDict)]
+        allUsers = dict.keys(self.userDict)
         if (len(texts) > 1):
             for user in allUsers:
                 self.sendMessage(user, texts[1])
