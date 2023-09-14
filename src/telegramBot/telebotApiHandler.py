@@ -495,6 +495,7 @@ class Index(Resource):
 예약 프로그램 동작이 시작되었습니다.
 매진된 자리에 공석이 생길 때 까지 근삼봇이 열심히 찾아볼게요!
 예약에 성공하면 여기로 다시 알려줄게요!
+[신규기능!] 진행중인 예약을 그만 두시고 싶으시면 /cancel을 입력해주세요!
 """       
         elif (str(data).upper() == "N" or str(data) == "아니오"):
             self.manageProgress(chatId, 0)
@@ -570,8 +571,11 @@ class Index(Resource):
         return make_response("OK")
         
     def subscribe(self, chatId):
-        self.subscribes.append(chatId)
-        data = "열차 이용정보 구독 설정이 완료되었습니다."
+        if (chatId not in self.subscribes):
+            self.subscribes.append(chatId)
+            data = "열차 이용정보 구독 설정이 완료되었습니다."
+        else:
+            data = "이미 구독했습니다."
         self.sendMessage(chatId, data)
 
     def sendToSubscribers(self, data):
