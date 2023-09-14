@@ -24,5 +24,6 @@ BOTTOKEN # 텔레그램 봇 토큰
 ```
 
 ## 관리자편의 로그인 기능 사용하고 싶은 경우
+```bash
 docker run -dit -e USERID=[본인코레인ID] -e USERPW=[본인코레일PW] -p [외부에 노출시킬 포트]:8080 [빌드한 이미지명]
 ```
