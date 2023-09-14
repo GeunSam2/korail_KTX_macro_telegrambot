@@ -133,13 +133,8 @@ class Index(Resource):
         if (getText == "/cancel"):
             self.cancelFunc(chatId)
             return make_response("OK")
-        elif (progressNum == 12):
-            self.alreadyDoing(chatId)
-            return make_response("OK")
         
-        if (getText == "/start"):
-            self.startFunc(chatId)
-        elif (getText == "/subscribe"):
+        if (getText == "/subscribe"):
             self.subscribe(chatId)
         elif (getText == "/status"):
             self.getStatusInfo(chatId)
@@ -154,6 +149,11 @@ class Index(Resource):
         elif (getText[0] == "/"):
             getText = "잘못된 명령어 입니다."
             self.sendMessage(chatId, getText)
+        elif (progressNum == 12):
+            self.alreadyDoing(chatId)
+            return make_response("OK")
+        elif (getText == "/start"):
+            self.startFunc(chatId)
         else :
             if (inProgress):
                 self.manageProgress(chatId, progressNum, getText)
