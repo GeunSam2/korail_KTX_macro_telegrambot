@@ -243,8 +243,16 @@ class Index(Resource):
     
     #아이디 입력 함수
     def inputId(self, chatId, data):
+        allowList = os.environ.get('ALLOW_LIST')
         if ("-" not in data):
             msg = "'-'를 포함한 전화번호를 입력해주세요. 다시 입력 바랍니다."
+        elif (data not in allowList):
+            self.manageProgress(chatId, 0)
+            msg = """
+2024년 부터 본 서비스가 유료화 되었습니다. 
+구독을 희망하시면 텔레그램 @dubidum 으로 문의주세요.
+예매 진행을 취소합니다.
+"""
         else:
             self.userDict[chatId]["userInfo"]["korailId"] = data
             self.userDict[chatId]["lastAction"] = 3
