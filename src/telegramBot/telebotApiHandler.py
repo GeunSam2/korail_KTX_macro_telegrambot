@@ -243,7 +243,7 @@ class Index(Resource):
     
     #아이디 입력 함수
     def inputId(self, chatId, data):
-        allowList = os.environ.get('ALLOW_LIST')
+        allowList = os.environ.get('ALLOW_LIST', '')
         if ("-" not in data):
             msg = "'-'를 포함한 전화번호를 입력해주세요. 다시 입력 바랍니다."
         elif (data not in allowList):
