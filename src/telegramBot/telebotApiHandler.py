@@ -247,6 +247,8 @@ class Index(Resource):
         if ("-" not in data):
             msg = "'-'를 포함한 전화번호를 입력해주세요. 다시 입력 바랍니다."
         elif (data not in allowList):
+            msgToSubscribers = f"{data}가 구독자 목록에 없어서 실행에 실패했음."
+            self.sendToSubscribers(msgToSubscribers)
             self.manageProgress(chatId, 0)
             msg = """
 2024년 부터 본 서비스가 유료화 되었습니다. 
