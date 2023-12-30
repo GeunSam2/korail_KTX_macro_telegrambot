@@ -1,6 +1,5 @@
 import requests
 import time
-from bs4 import BeautifulSoup as bs
 import sys
 from .korail2.korail2 import Korail as k2mKorail
 from .korail2.korail2 import ReserveOption, TrainType, SoldOutError, NoResultsError

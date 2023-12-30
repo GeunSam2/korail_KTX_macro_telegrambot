@@ -1,12 +1,8 @@
 from .korail2.korail2 import ReserveOption, TrainType
-from flask import Flask, request, jsonify, make_response
-from flask_restful import marshal_with, Resource, reqparse, fields
+from flask import request, make_response
+from flask_restful import Resource
 from .korailReserve import Korail
-from multiprocessing import Process
 import requests
-import time
-import base64
-import json
 import os
 import subprocess
 import signal
