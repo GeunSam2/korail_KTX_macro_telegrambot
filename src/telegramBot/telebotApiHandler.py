@@ -616,7 +616,7 @@ class Index(Resource):
         self.sendMessage(chatId, data)
 
     def broadCast(self, getText):
-        texts = getText.split('/boradcast ')
+        texts = getText.split('/broadcast ')
         allUsers = dict.keys(self.userDict)
         if (len(texts) > 1):
             for user in allUsers:
