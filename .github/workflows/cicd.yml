@@ -51,6 +51,6 @@ jobs:
                     -e USERID='${{ secrets.ADMIN_USERID }}' \
                     -e USERPW='${{ secrets.ADMIN_PASSWD}}' \
                     -e BOTTOKEN='${{ secrets.TELEGRAM_BOTTOKEN }}' \
-                    -e ALLOW_LIST='${{ secrets.ALLOW_LIST }}' \
+                    -e ALLOW_LIST='${{ vars.ALLOW_LIST }}' \
                     --name korailreserve \
                     geunsam2/korailbot:latest
