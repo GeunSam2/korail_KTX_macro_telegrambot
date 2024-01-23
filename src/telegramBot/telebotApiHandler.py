@@ -1,6 +1,7 @@
 from .korail2.korail2 import ReserveOption, TrainType
 from flask import request, make_response
 from flask_restful import Resource
+from datetime import datetime
 from .korailReserve import Korail
 import requests
 import os
@@ -278,7 +279,7 @@ class Index(Resource):
             msg = """
 로그인에 성공하였습니다.
 예매 희망일 8자를 입력해주십시오.
-(ex_ 20230101) <- 2023년 1월 1일
+(ex_ 20230101) <- 2030년 1월 1일
 """
             self.userDict[chatId]["lastAction"] = 4
             self.sendMessage(chatId, msg)
@@ -308,7 +309,8 @@ class Index(Resource):
     
     #출발일 입력 함수
     def inputDate(self, chatId, data):
-        if (str(data).isdigit() and len(str(data)) == 8):
+        today = datetime.today().strftime("%Y%m%d")
+        if (str(data).isdigit() and len(str(data)) == 8 and data >= today):
             self.userDict[chatId]["trainInfo"]["depDate"] = data
             self.userDict[chatId]["lastAction"] = 5
             msg = """
@@ -321,7 +323,7 @@ class Index(Resource):
 """
         else:
             msg = """
-입력하신 날짜가 형식에 맞지 않습니다.
+입력하신 날짜가 형식에 맞지 않거나 예약시작일보다 이른 날짜입니다.
 예매 희망일 8자를 입력해주십시오.
 (ex_ 20210124) <- 2021년 1월 24일
 """
