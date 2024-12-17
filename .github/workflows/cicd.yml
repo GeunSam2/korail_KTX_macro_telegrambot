@@ -34,11 +34,11 @@ jobs:
 
     - 
         name: SSH Remote Commands
-        uses: appleboy/ssh-action@v0.1.9      
+        uses: appleboy/ssh-action@v1.2.0     
         with:
             host: opc.modutech.win         
             username: ${{ secrets.SSH_USERNAME }}
-            password: ${{ secrets.SSH_PASSWORD }}
+            key: ${{ secrets.SSH_KEY }}
             port: 22
             timeout: 40s  # 30초 기본        
             script: |
