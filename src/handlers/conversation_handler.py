@@ -79,6 +79,10 @@ class ConversationHandler:
         elif progress == UserProgress.TRAIN_TYPE_INPUT_SUCCESS:
             self._handle_special_option_input(chat_id, text, session)
         elif progress == UserProgress.SPECIAL_INPUT_SUCCESS:
+            self._handle_passenger_count_input(chat_id, text, session)
+        elif progress == UserProgress.PASSENGER_COUNT_INPUT_SUCCESS:
+            self._handle_seat_strategy_input(chat_id, text, session)
+        elif progress == UserProgress.SEAT_STRATEGY_INPUT_SUCCESS:
             self._handle_final_confirmation(chat_id, text, session)
         else:
             logger.error(f"Unknown progress state: {progress}")
@@ -338,7 +342,84 @@ class ConversationHandler:
         session.last_action = UserProgress.SPECIAL_INPUT_SUCCESS
         self.storage.save_user_session(session)
 
-        # Show summary
+        # Ask for passenger count
+        message = """
+특실 예매 타입 입력이 완료되었습니다.
+탑승 인원수를 입력해 주십시오.
+
+💡 1~9명까지 선택 가능합니다.
+(현재는 성인 인원수만 지원합니다)
+
+예) 2명이 탑승하는 경우: 2
+"""
+        self.telegram.send_message(chat_id, message)
+
+    def _handle_passenger_count_input(self, chat_id: int, text: str, session: UserSession) -> None:
+        """Handle passenger count input."""
+        # Validate input
+        if not text.isdigit():
+            self.telegram.send_message(chat_id, "숫자를 입력해주세요. (1~9)")
+            return
+
+        count = int(text)
+        if count < 1 or count > 9:
+            self.telegram.send_message(chat_id, "1~9명 사이의 인원수를 입력해주세요.")
+            return
+
+        # Save passenger count
+        session.train_info['passengerCount'] = count
+        session.last_action = UserProgress.PASSENGER_COUNT_INPUT_SUCCESS
+        self.storage.save_user_session(session)
+
+        # Ask for seat strategy if more than 1 passenger
+        if count > 1:
+            message = f"""
+인원수 입력이 완료되었습니다. (총 {count}명)
+
+좌석 배치 방식을 선택해 주십시오.
+
+=================
+1. 연속 좌석 (권장)
+   - 같이 앉을 수 있도록 연속된 좌석 예약
+   - 연속된 좌석이 없으면 예약 실패
+
+2. 랜덤 배치
+   - 한 자리씩 개별적으로 예약
+   - 좌석이 떨어져 있을 수 있음
+   - 예약 성공률이 더 높음
+=================
+
+1 또는 2를 입력해 주십시오.
+"""
+            self.telegram.send_message(chat_id, message)
+        else:
+            # Single passenger, skip seat strategy
+            session.train_info['seatStrategy'] = 'consecutive'
+            session.last_action = UserProgress.SEAT_STRATEGY_INPUT_SUCCESS
+            self.storage.save_user_session(session)
+            self._show_final_confirmation(chat_id, session)
+
+    def _handle_seat_strategy_input(self, chat_id: int, text: str, session: UserSession) -> None:
+        """Handle seat strategy selection."""
+        if text not in ["1", "2"]:
+            self.telegram.send_message(chat_id, "1 또는 2를 입력해주세요.")
+            return
+
+        strategy = "consecutive" if text == "1" else "random"
+        strategy_display = "연속 좌석" if text == "1" else "랜덤 배치"
+
+        session.train_info['seatStrategy'] = strategy
+        session.train_info['seatStrategyShow'] = strategy_display
+        session.last_action = UserProgress.SEAT_STRATEGY_INPUT_SUCCESS
+        self.storage.save_user_session(session)
+
+        self._show_final_confirmation(chat_id, session)
+
+    def _show_final_confirmation(self, chat_id: int, session: UserSession) -> None:
+        """Show final confirmation summary."""
+        passenger_count = session.train_info.get('passengerCount', 1)
+        seat_strategy_display = session.train_info.get('seatStrategyShow', '1명')
+
         summary = f"""
 모든 정보 입력이 완료되었습니다.
 정보를 확인하십시오.
@@ -350,6 +431,8 @@ class ConversationHandler:
 검색최대시각 : {session.train_info['maxDepTime']}
 열차타입 : {session.train_info['trainTypeShow']}
 특실여부 : {session.train_info['specialInfoShow']}
+탑승인원 : {passenger_count}명
+좌석배치 : {seat_strategy_display}
 ===================
 
 'Y'또는 '예'를 입력하시면 예약을 시작합니다.
@@ -389,7 +472,9 @@ class ConversationHandler:
             train_type=session.train_info['trainType'],
             train_type_display=session.train_info['trainTypeShow'],
             special_option=session.train_info['specialInfo'],
-            special_option_display=session.train_info['specialInfoShow']
+            special_option_display=session.train_info['specialInfoShow'],
+            passenger_count=session.train_info.get('passengerCount', 1),
+            seat_strategy=session.train_info.get('seatStrategy', 'consecutive')
         )
 
         # Update session

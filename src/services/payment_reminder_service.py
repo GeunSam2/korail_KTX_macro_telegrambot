@@ -7,6 +7,7 @@ from config.settings import settings
 from models import PaymentStatus
 from storage.base import StorageInterface
 from services.telegram_service import TelegramService, MessageTemplates
+from telegramBot.messages import Messages
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -47,6 +48,14 @@ class PaymentReminderService:
         Args:
             chat_id: Telegram chat ID to send reminders to
         """
+        # Check if there's already an active reminder
+        existing_status = self.storage.get_payment_status(chat_id)
+        if existing_status and existing_status.reminder_active:
+            logger.warning(
+                f"Reminder already active for chat_id={chat_id}, skipping duplicate"
+            )
+            return
+
         # Initialize payment status
         payment_status = PaymentStatus(
             chat_id=chat_id,
@@ -68,6 +77,7 @@ class PaymentReminderService:
             # Check if payment completed
             if self.check_payment_completed(chat_id):
                 self._send_completion_message(chat_id)
+                self._deactivate_reminder(chat_id)
                 return
 
             # Calculate remaining time
@@ -84,6 +94,9 @@ class PaymentReminderService:
             self._send_completion_message(chat_id)
         else:
             self._send_timeout_message(chat_id)
+
+        # Deactivate reminder after completion or timeout
+        self._deactivate_reminder(chat_id)
 
     def check_payment_completed(self, chat_id: int) -> bool:
         """
@@ -140,23 +153,19 @@ class PaymentReminderService:
         logger.debug(f"Sent payment reminder to chat_id={chat_id}, remaining={minutes}m {seconds}s")
 
     def _send_completion_message(self, chat_id: int) -> None:
-        """Send payment completion confirmation."""
-        message = """
-✅ 결제 완료 확인!
-결제를 완료하셨습니다.
-즐거운 여행 되세요! 🚄
-"""
-        self.telegram.send_message(chat_id, message)
-        logger.info(f"Sent payment completion message to chat_id={chat_id}")
+        """Send reminder stopped message (user sent a message)."""
+        self.telegram.send_message(chat_id, Messages.PAYMENT_REMINDER_STOPPED)
+        logger.info(f"Sent reminder stopped message to chat_id={chat_id}")
 
     def _send_timeout_message(self, chat_id: int) -> None:
-        """Send timeout warning message."""
-        message = """
-⚠️ 예약 시간 만료 ⚠️
-예약 제한 시간 10분이 경과했습니다.
-결제를 완료하지 않으셨다면 예약이 취소되었을 수 있습니다.
+        """Send reminder timeout message (10 minutes elapsed)."""
+        self.telegram.send_message(chat_id, Messages.PAYMENT_REMINDER_TIMEOUT)
+        logger.warning(f"Payment reminder timeout for chat_id={chat_id}")
 
-사이트에서 예약 상태를 확인해주세요.
-"""
-        self.telegram.send_message(chat_id, message)
-        logger.warning(f"Payment timeout for chat_id={chat_id}")
+    def _deactivate_reminder(self, chat_id: int) -> None:
+        """Deactivate reminder for a chat ID."""
+        payment_status = self.storage.get_payment_status(chat_id)
+        if payment_status:
+            payment_status.reminder_active = False
+            self.storage.save_payment_status(payment_status)
+            logger.info(f"Deactivated reminder for chat_id={chat_id}")

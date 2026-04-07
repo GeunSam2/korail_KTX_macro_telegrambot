@@ -16,6 +16,8 @@ class TrainSearchParams:
     train_type_display: str = "KTX"
     special_option: str = "ReserveOption.GENERAL_FIRST"  # korail2.ReserveOption enum as string
     special_option_display: str = "GENERAL_FIRST"
+    passenger_count: int = 1  # Number of adult passengers (1-9)
+    seat_strategy: str = "consecutive"  # "consecutive" or "random"
 
     def validate(self) -> tuple[bool, Optional[str]]:
         """

@@ -43,6 +43,10 @@ class BackgroundReservationProcess:
         self.chat_id = sys.argv[9]
         self.max_dep_time = sys.argv[10]
 
+        # New parameters with defaults for backward compatibility
+        self.passenger_count = int(sys.argv[11]) if len(sys.argv) > 11 else 1
+        self.seat_strategy = sys.argv[12] if len(sys.argv) > 12 else "consecutive"
+
         # Parse train type
         self.train_type = self._parse_train_type(self.train_type_str)
         self.reserve_option = self._parse_reserve_option(self.special_info_str)
@@ -55,7 +59,8 @@ class BackgroundReservationProcess:
 
         logger.info(
             f"Initialized background process: {self.src_locate} -> {self.dst_locate} "
-            f"on {self.dep_date} for chat_id={self.chat_id}"
+            f"on {self.dep_date} for chat_id={self.chat_id}, "
+            f"passengers={self.passenger_count}, strategy={self.seat_strategy}"
         )
 
     def _parse_train_type(self, train_type_str: str) -> TrainType:
@@ -117,15 +122,45 @@ class BackgroundReservationProcess:
                 dep_time=self.dep_time,
                 max_dep_time=self.max_dep_time,
                 train_type=self.train_type,
-                reserve_option=self.reserve_option
+                reserve_option=self.reserve_option,
+                passenger_count=self.passenger_count,
+                seat_strategy=self.seat_strategy
             )
 
             if reservation:
                 logger.info(f"Reservation successful: {reservation}")
 
-                # Send success message
-                message = f"""
+                # Check if this is a random allocation with multiple reservations
+                is_random = hasattr(reservation, '_is_random_allocation') and reservation._is_random_allocation
+                total_seats = getattr(reservation, '_total_seats', self.passenger_count)
+
+                # Build success message
+                if is_random and total_seats > 1:
+                    all_reservations = getattr(reservation, '_all_reservations', [reservation])
+                    reservation_details = "\n".join([f"좌석 {i+1}: {res}" for i, res in enumerate(all_reservations)])
+                    message = f"""
 🎉 열차 예약에 성공했습니다!!
+
+총 {total_seats}명의 좌석이 개별적으로 예약되었습니다.
+(랜덤 배치 옵션: 좌석이 떨어져 있을 수 있습니다)
+
+예약에 성공한 열차 정보는 다음과 같습니다.
+===================
+{reservation_details}
+===================
+
+⚠️ 중요: {settings.PAYMENT_TIMEOUT_MINUTES}분내에 사이트에서 결제를 완료하지 않으면 예약이 취소됩니다!
+
+💡 결제 완료 후 아무 메시지나 입력하시면 리마인더 알림이 중단됩니다.
+🔗 결제 링크: {settings.KORAIL_PAYMENT_URL}
+"""
+                else:
+                    seats_text = f"{self.passenger_count}명" if self.passenger_count > 1 else ""
+                    consecutive_text = " (연속된 좌석)" if self.passenger_count > 1 else ""
+                    message = f"""
+🎉 열차 예약에 성공했습니다!!
+
+{seats_text}{consecutive_text}
 
 예약에 성공한 열차 정보는 다음과 같습니다.
 ===================
@@ -137,9 +172,10 @@ class BackgroundReservationProcess:
 💡 결제 완료 후 아무 메시지나 입력하시면 리마인더 알림이 중단됩니다.
 🔗 결제 링크: {settings.KORAIL_PAYMENT_URL}
 """
+
                 self._send_callback(message, status=0)
 
-                # Start payment reminders
+                # Start payment reminders (only once, even for multiple reservations)
                 logger.info(f"Starting payment reminders for chat_id={self.chat_id}")
                 self.payment_reminder.start_reminders(int(self.chat_id))
 

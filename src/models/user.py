@@ -45,4 +45,6 @@ class UserProgress:
     MAX_DEP_TIME_INPUT_SUCCESS = 9
     TRAIN_TYPE_INPUT_SUCCESS = 10
     SPECIAL_INPUT_SUCCESS = 11
-    FINDING_TICKET = 12
+    PASSENGER_COUNT_INPUT_SUCCESS = 12  # New: passenger count selection
+    SEAT_STRATEGY_INPUT_SUCCESS = 13  # New: seat allocation strategy
+    FINDING_TICKET = 14  # Updated from 12 to 14

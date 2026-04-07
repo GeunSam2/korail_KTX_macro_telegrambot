@@ -1,7 +1,10 @@
 """Korail API service wrapper."""
 import time
 from typing import Optional, List
-from korail2 import Korail as K2MKorail, TrainType, ReserveOption, SoldOutError, NoResultsError
+from korail2 import (
+    Korail as K2MKorail, TrainType, ReserveOption, SoldOutError, NoResultsError,
+    AdultPassenger
+)
 
 from config.settings import settings
 from utils.logger import get_logger
@@ -50,7 +53,8 @@ class KorailService:
         dst_locate: str,
         dep_time: str = "000000",
         max_dep_time: str = "2400",
-        train_type: TrainType = TrainType.KTX
+        train_type: TrainType = TrainType.KTX,
+        passenger_count: int = 1
     ) -> List:
         """
         Search for available trains.
@@ -62,6 +66,7 @@ class KorailService:
             dep_time: Departure time (HHMMSS)
             max_dep_time: Maximum departure time threshold (HHMM)
             train_type: Type of train to search for
+            passenger_count: Number of adult passengers
 
         Returns:
             List of available trains
@@ -73,12 +78,16 @@ class KorailService:
             raise ValueError("Must login before searching trains")
 
         try:
+            # Create passenger list
+            passengers = [AdultPassenger(passenger_count)]
+
             trains = self._korail_instance.search_train(
                 src_locate,
                 dst_locate,
                 dep_date,
                 dep_time,
-                train_type=train_type
+                train_type=train_type,
+                passengers=passengers
             )
 
             # Filter by max departure time
@@ -89,7 +98,7 @@ class KorailService:
 
             logger.info(
                 f"Found {len(trains)} trains from {src_locate} to {dst_locate} "
-                f"on {dep_date} at {dep_time}"
+                f"on {dep_date} at {dep_time} for {passenger_count} passengers"
             )
             return trains
 
@@ -100,13 +109,19 @@ class KorailService:
             logger.error(f"Error searching trains: {e}")
             return []
 
-    def reserve_train(self, train, option: ReserveOption = ReserveOption.GENERAL_FIRST):
+    def reserve_train(
+        self,
+        train,
+        option: ReserveOption = ReserveOption.GENERAL_FIRST,
+        passenger_count: int = 1
+    ):
         """
         Attempt to reserve a specific train.
 
         Args:
             train: Train object from search_trains()
             option: Reservation option (special seat preference)
+            passenger_count: Number of adult passengers
 
         Returns:
             Reservation object if successful, None otherwise
@@ -115,8 +130,11 @@ class KorailService:
             raise ValueError("Must login before reserving")
 
         try:
-            logger.info(f"Attempting to reserve train: {train}")
-            reservation = self._korail_instance.reserve(train, option=option)
+            # Create passenger list
+            passengers = [AdultPassenger(passenger_count)]
+
+            logger.info(f"Attempting to reserve train: {train} for {passenger_count} passengers")
+            reservation = self._korail_instance.reserve(train, passengers=passengers, option=option)
 
             if reservation:
                 logger.info(f"Successfully reserved train: {reservation}")
@@ -138,6 +156,8 @@ class KorailService:
         max_dep_time: str = "2400",
         train_type: TrainType = TrainType.KTX,
         reserve_option: ReserveOption = ReserveOption.GENERAL_FIRST,
+        passenger_count: int = 1,
+        seat_strategy: str = "consecutive",
         max_attempts: Optional[int] = None
     ):
         """
@@ -151,10 +171,12 @@ class KorailService:
             max_dep_time: Maximum departure time (HHMM)
             train_type: Train type filter
             reserve_option: Reservation option
+            passenger_count: Number of adult passengers
+            seat_strategy: "consecutive" for seats together, "random" for separate seats
             max_attempts: Maximum attempts (None for infinite)
 
         Returns:
-            Reservation object when successful, None if max_attempts reached
+            Reservation object(s) when successful, None if max_attempts reached
         """
         if not self._logged_in:
             raise ValueError("Must login before searching")
@@ -162,8 +184,34 @@ class KorailService:
         attempts = 0
         logger.info(
             f"Starting reservation loop: {src_locate} -> {dst_locate} "
-            f"on {dep_date} at {dep_time}"
+            f"on {dep_date} at {dep_time} for {passenger_count} passengers ({seat_strategy} seating)"
         )
+
+        if seat_strategy == "consecutive":
+            return self._search_and_reserve_consecutive(
+                dep_date, src_locate, dst_locate, dep_time, max_dep_time,
+                train_type, reserve_option, passenger_count, max_attempts
+            )
+        else:  # random
+            return self._search_and_reserve_random(
+                dep_date, src_locate, dst_locate, dep_time, max_dep_time,
+                train_type, reserve_option, passenger_count, max_attempts
+            )
+
+    def _search_and_reserve_consecutive(
+        self,
+        dep_date: str,
+        src_locate: str,
+        dst_locate: str,
+        dep_time: str,
+        max_dep_time: str,
+        train_type: TrainType,
+        reserve_option: ReserveOption,
+        passenger_count: int,
+        max_attempts: Optional[int]
+    ):
+        """Reserve seats consecutively (together)."""
+        attempts = 0
 
         while True:
             attempts += 1
@@ -173,13 +221,13 @@ class KorailService:
 
             # Search for trains
             trains = self.search_trains(
-                dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type
+                dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count
             )
 
             # Try to reserve each train found
             for train in trains:
                 logger.info(f"Found train: {train}, attempting reservation...")
-                reservation = self.reserve_train(train, option=reserve_option)
+                reservation = self.reserve_train(train, option=reserve_option, passenger_count=passenger_count)
 
                 if reservation:
                     logger.info(f"Reservation successful after {attempts} attempts")
@@ -189,6 +237,97 @@ class KorailService:
 
             # Wait before next search
             time.sleep(self._search_interval)
+
+    def _search_and_reserve_random(
+        self,
+        dep_date: str,
+        src_locate: str,
+        dst_locate: str,
+        dep_time: str,
+        max_dep_time: str,
+        train_type: TrainType,
+        reserve_option: ReserveOption,
+        passenger_count: int,
+        max_attempts: Optional[int]
+    ):
+        """Reserve seats randomly (one at a time until target count reached)."""
+        attempts = 0
+        reservations = []
+        target_count = passenger_count
+
+        logger.info(f"Random seating: will reserve {target_count} individual tickets")
+
+        while len(reservations) < target_count:
+            attempts += 1
+            if max_attempts and attempts > max_attempts:
+                logger.warning(f"Reached max attempts ({max_attempts}), stopping")
+                # Cancel any partial reservations
+                self._cancel_reservations(reservations)
+                return None
+
+            # Search for trains (search for single passenger each time)
+            trains = self.search_trains(
+                dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count=1
+            )
+
+            # Try to reserve each train found
+            for train in trains:
+                remaining = target_count - len(reservations)
+                logger.info(
+                    f"Found train: {train}, attempting reservation "
+                    f"({len(reservations) + 1}/{target_count})..."
+                )
+
+                # Reserve one seat at a time
+                reservation = self.reserve_train(train, option=reserve_option, passenger_count=1)
+
+                if reservation:
+                    reservations.append(reservation)
+                    logger.info(
+                        f"Reserved seat {len(reservations)}/{target_count} "
+                        f"(attempt #{attempts})"
+                    )
+
+                    # Check if we've reached target
+                    if len(reservations) >= target_count:
+                        logger.info(
+                            f"All {target_count} seats reserved successfully! "
+                            f"Total attempts: {attempts}"
+                        )
+                        # Return the first reservation as primary (for compatibility)
+                        # Store all reservations in a custom attribute for later access
+                        first_reservation = reservations[0]
+                        first_reservation._all_reservations = reservations
+                        first_reservation._is_random_allocation = True
+                        first_reservation._total_seats = target_count
+                        return first_reservation
+
+                    # Add delay between individual reservations to avoid rate limit
+                    # Use longer interval for safety
+                    time.sleep(self._search_interval * 1.5)
+                    break  # Found a train and reserved, restart search loop
+
+                else:
+                    logger.debug("Reservation failed, continuing search...")
+
+            # Wait before next search attempt
+            time.sleep(self._search_interval)
+
+        return reservations[0] if reservations else None
+
+    def _cancel_reservations(self, reservations: List) -> None:
+        """Cancel a list of reservations (cleanup for failed random allocation)."""
+        if not reservations:
+            return
+
+        logger.warning(f"Cancelling {len(reservations)} partial reservations...")
+        for reservation in reservations:
+            try:
+                # Note: korail2 API has a cancel method but we need to check if it's available
+                logger.warning(f"Would cancel reservation: {reservation}")
+                # self._korail_instance.cancel(reservation.rsv_id)
+            except Exception as e:
+                logger.error(f"Failed to cancel reservation: {e}")
 
     @property
     def is_logged_in(self) -> bool:

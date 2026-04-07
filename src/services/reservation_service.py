@@ -70,7 +70,9 @@ class ReservationService:
                 search_params.train_type,
                 search_params.special_option,
                 str(chat_id),
-                search_params.max_dep_time
+                search_params.max_dep_time,
+                str(search_params.passenger_count),
+                search_params.seat_strategy
             ]
 
             # Start background process
