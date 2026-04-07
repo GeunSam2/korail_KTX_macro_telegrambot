@@ -23,8 +23,18 @@ class MockBackgroundProcess:
 
     def _parse_reserve_option(self, option_str: str) -> ReserveOption:
         """Parse reserve option from string."""
-        option_str_upper = option_str.upper()
+        # Check for exact string representation of enum
+        if "ReserveOption.GENERAL_FIRST" in option_str:
+            return ReserveOption.GENERAL_FIRST
+        elif "ReserveOption.GENERAL_ONLY" in option_str:
+            return ReserveOption.GENERAL_ONLY
+        elif "ReserveOption.SPECIAL_FIRST" in option_str:
+            return ReserveOption.SPECIAL_FIRST
+        elif "ReserveOption.SPECIAL_ONLY" in option_str:
+            return ReserveOption.SPECIAL_ONLY
 
+        # Fallback to checking for keywords
+        option_str_upper = option_str.upper()
         if "GENERAL_FIRST" in option_str_upper:
             return ReserveOption.GENERAL_FIRST
         elif "GENERAL_ONLY" in option_str_upper:
