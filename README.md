@@ -20,7 +20,7 @@ make run         # 실행
 ## 참고
 
 - 본 서비스는 [carpedm20/korail2](https://github.com/carpedm20/korail2)를 기반으로 합니다.
-- 일부 수정사항이 있어 [GeunSam2/korail2](https://github.com/GeunSam2/korail2) fork를 패키지로 설치하여 사용합니다.
+- Dynapath 우회 패치가 적용된 [dhfhfk/korail2](https://github.com/dhfhfk/korail2/tree/bypassDynapath) fork를 패키지로 설치하여 사용합니다.
 
 ## 주의사항
 

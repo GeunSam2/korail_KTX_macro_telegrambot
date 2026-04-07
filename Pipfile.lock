@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ae12de17542d52231b36482e9ab418438f201d8a46677b7a793abcc33f819ca4"
+            "sha256": "9f776fa2da47bcfd10c6447bcdf12a8f4ae5ca6ec502ca81ecfd75702a451297"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -426,8 +426,8 @@
             "version": "==3.1.6"
         },
         "korail2": {
-            "git": "https://github.com/GeunSam2/korail2.git",
-            "ref": "5a6593f3093ee15564d217443bd46e40e8217c17"
+            "git": "https://github.com/dhfhfk/korail2.git",
+            "ref": "4b134266fff097ea0fd54e9f760cb128b6c8f878"
         },
         "markupsafe": {
             "hashes": [

@@ -10,7 +10,7 @@ requests = "*"
 flask-cors = "*"
 python-telegram-bot = "*"
 pyopenssl = "*"
-korail2 = {git = "https://github.com/GeunSam2/korail2.git", ref = "master"}
+korail2 = {git = "https://github.com/dhfhfk/korail2.git", ref = "bypassDynapath"}
 
 [dev-packages]
 
