@@ -36,7 +36,13 @@ class Index(Resource):
 
     #Group for get notification
     subscribes = []
-    
+
+    #Payment completion status : Track payment reminder status
+    # {
+    #     123123: True/False  # True if user confirmed payment
+    # }
+    paymentCompleted = {}
+
     def manageProgress(self, chatId, action, data=""):
         #     !!lastAction!!
         #     0 : init
@@ -136,8 +142,17 @@ class Index(Resource):
         if (getText == "/cancel"):
             self.cancelFunc(chatId)
             return make_response("OK")
-        
-        if (getText == "/subscribe"):
+
+        # 결제 완료 확인 - 예약 리마인더가 진행 중인 경우 아무 메시지나 입력하면 중단
+        if chatId in self.paymentCompleted and not self.paymentCompleted[chatId]:
+            # 리마인더 진행 중이고 아직 결제 확인 안된 상태
+            if getText and getText[0] != '/':  # 일반 메시지 입력 시
+                self.confirmPayment(chatId)
+                return make_response("OK")
+
+        if (getText == "/결제완료" or getText == "/paymentdone"):
+            self.confirmPayment(chatId)
+        elif (getText == "/subscribe"):
             self.subscribe(chatId)
         elif (getText == "/status"):
             self.getStatusInfo(chatId)
@@ -182,7 +197,7 @@ class Index(Resource):
     def startFunc(self, chatId):
         msg = """
 근삼 코레일 봇을 이용해 주셔사 감사합니다.
-본 프로그램은 매진 열차 자동 예약을 위해 제작된 프로그램으로, 결제 직전의 단계인 "예약" 까지만 진행해 주며, 이후 결제는 예약이 완료된 이후 20분 내로 사용자가 직접 해주셔야 합니다.
+본 프로그램은 매진 열차 자동 예약을 위해 제작된 프로그램으로, 결제 직전의 단계인 "예약" 까지만 진행해 주며, 이후 결제는 예약이 완료된 이후 10분 내로 사용자가 직접 해주셔야 합니다.
 
 예매 프로그램을 시작하기 위해 정보를 입력받겠습니다.
 예매정보 입력은 다음 순서로 진행됩니다.
@@ -577,6 +592,8 @@ class Index(Resource):
             if (str(status) == "0"):
                 print ("예약 완료되어 상태 0으로 초기화")
                 self.manageProgress(chatId, 0)
+                # 리마인더 시작을 위해 결제 완료 상태 False로 초기화
+                self.paymentCompleted[chatId] = False
             self.sendMessage(chatId, msg)
 
             del self.runningStatus[chatId]
@@ -640,6 +657,7 @@ class Index(Resource):
     def returnHelp(self, chatId):
         msg = """
 - 예약 시작 : /start
+- 결제 완료 : /결제완료 (리마인더 중단)
 - 구독 시작 : /subscribe
 - 예약 상태 확인 : /status
 - 전체 취소 : /cancelall
@@ -647,3 +665,30 @@ class Index(Resource):
 - 공지 : /broadcast [메시지]
 """
         self.sendMessage(chatId, msg)
+
+    def confirmPayment(self, chatId):
+        """사용자가 결제 완료를 확인"""
+        self.paymentCompleted[chatId] = True
+        msg = """
+✅ 결제 완료 확인되었습니다!
+리마인더 알림이 곧 중단됩니다.
+즐거운 여행 되세요! 🚄
+"""
+        self.sendMessage(chatId, msg)
+
+
+class CheckPayment(Resource):
+    """결제 완료 상태 확인 API 엔드포인트"""
+
+    def get(self):
+        chatId = request.args.get('chatId')
+        if not chatId:
+            return {'completed': False}
+
+        try:
+            chatId = int(chatId)
+            # Index 클래스의 paymentCompleted 딕셔너리 참조
+            completed = Index.paymentCompleted.get(chatId, False)
+            return {'completed': completed}
+        except:
+            return {'completed': False}

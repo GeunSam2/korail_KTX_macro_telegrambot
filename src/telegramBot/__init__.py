@@ -1,2 +1,2 @@
 from .korailReserve import Korail
-from .telebotApiHandler import Index
+from .telebotApiHandler import Index, CheckPayment

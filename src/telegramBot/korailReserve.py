@@ -86,28 +86,104 @@ class Korail(object):
         print (reserveInfo)
         result = self.reserveInfo['reserveSuc']
         chatId = self.chatId
-        
+
         if (result == "wrong"):
             msg = "차편을 찾을 수 없거나, 검색에 문제가 생겼어요. 처음부터 다시 시도해 주세요."
+            self.telebotChangeState(chatId, msg, 0)
         elif (result):
             msg = f"""
-열차 예약에 성공했습니다!!
+🎉 열차 예약에 성공했습니다!!
+
 예약에 성공한 열차 정보는 다음과 같습니다.
 ===================
 {reserveInfo}
 ===================
 
-20분내에 사이트에서 결제를 완료하지 않으면 예약이 취소되니 서두르세요!
-https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
+⚠️ 중요: 10분내에 사이트에서 결제를 완료하지 않으면 예약이 취소됩니다!
+
+💡 결제 완료 후 아무 메시지나 입력하시면 리마인더 알림이 중단됩니다.
+🔗 결제 링크: https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
 """
+            self.telebotChangeState(chatId, msg, 0)
+            # 10분 동안 1분마다 리마인드 알림 전송
+            self.sendPaymentReminders(chatId)
         else :
             msg = """
 알수 없는 오류로 예매에 실패했습니다. 처음부터 다시 시도해주세요.
 
 [문제가 없는데 계속 반복되는 경우, 이미 해당 열차가 예매가 되었을 수 있습니다. 사이트를 확인해주세요.]
 """
-        self.telebotChangeState(chatId, msg, 0)
+            self.telebotChangeState(chatId, msg, 0)
         return None
+
+    def sendPaymentReminders(self, chatId):
+        """10분 동안 10초마다 결제 리마인드 알림 전송 (결제 완료 시 중단 가능)"""
+        total_seconds = 10 * 60  # 10분 = 600초
+        interval = 10  # 10초마다
+
+        for elapsed in range(interval, total_seconds + interval, interval):
+            time.sleep(interval)  # 10초 대기
+
+            remaining_seconds = total_seconds - elapsed
+            remaining_minutes = remaining_seconds // 60
+            remaining_secs = remaining_seconds % 60
+
+            # 결제 완료 확인 체크
+            if self.checkPaymentCompleted(chatId):
+                completion_msg = """
+✅ 결제 완료 확인!
+결제를 완료하셨습니다. 리마인더를 종료합니다.
+즐거운 여행 되세요! 🚄
+"""
+                self.telebotChangeState(chatId, completion_msg, 0)
+                return  # 리마인더 종료
+
+            # 시간이 남아있을 때만 리마인더 전송
+            if remaining_seconds > 0:
+                if remaining_secs == 0:
+                    time_text = f"{remaining_minutes}분"
+                else:
+                    time_text = f"{remaining_minutes}분 {remaining_secs}초"
+
+                reminder_msg = f"""
+⏰ 결제 리마인더 ⏰
+예약 취소까지 남은 시간: {time_text}
+
+서둘러 결제를 완료해주세요!
+💡 결제 완료 시 아무 메시지나 입력하면 알림이 중단됩니다.
+🔗 https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?
+"""
+                self.telebotChangeState(chatId, reminder_msg, 0)
+
+        # 10분 경과 후 최종 확인
+
+        if self.checkPaymentCompleted(chatId):
+            completion_msg = """
+✅ 결제 완료 확인!
+결제를 완료하셨습니다.
+즐거운 여행 되세요! 🚄
+"""
+            self.telebotChangeState(chatId, completion_msg, 0)
+        else:
+            final_msg = """
+⚠️ 예약 시간 만료 ⚠️
+예약 제한 시간 10분이 경과했습니다.
+결제를 완료하지 않으셨다면 예약이 취소되었을 수 있습니다.
+
+사이트에서 예약 상태를 확인해주세요.
+"""
+            self.telebotChangeState(chatId, final_msg, 0)
+
+    def checkPaymentCompleted(self, chatId):
+        """결제 완료 상태 확인"""
+        try:
+            callbackUrl = "http://127.0.0.1:8080/check_payment"
+            params = {"chatId": chatId}
+            s = requests.session()
+            response = s.get(callbackUrl, params=params, verify=False, timeout=5)
+            return response.json().get('completed', False)
+        except:
+            return False
 
     
     def telebotChangeState(self, chatId, msg, status):
