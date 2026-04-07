@@ -92,9 +92,16 @@ class KorailService:
 
             # Filter by max departure time
             if trains and max_dep_time != "2400":
-                time_str = "".join(str(trains[0]).split("(")[1].split("~")[0].split(":"))
-                if int(time_str) >= int(max_dep_time):
-                    trains = []
+                filtered_trains = []
+                max_time = int(max_dep_time)
+
+                for train in trains:
+                    dep_time_int = self._extract_departure_time(train)
+                    if dep_time_int > 0 and dep_time_int < max_time:
+                        filtered_trains.append(train)
+
+                trains = filtered_trains
+                logger.debug(f"Filtered to {len(trains)} trains by max_dep_time={max_dep_time}")
 
             logger.info(
                 f"Found {len(trains)} trains from {src_locate} to {dst_locate} "
@@ -328,6 +335,26 @@ class KorailService:
                 # self._korail_instance.cancel(reservation.rsv_id)
             except Exception as e:
                 logger.error(f"Failed to cancel reservation: {e}")
+
+    def _extract_departure_time(self, train) -> int:
+        """
+        Extract departure time from train object as HHMM integer.
+
+        Args:
+            train: Train object from korail2
+
+        Returns:
+            Departure time as integer (e.g., 944 for 09:44), 0 if extraction fails
+        """
+        try:
+            # str(train) format: "[KTX] 4월 8일, 용산~광주송정(09:44~12:50), ..."
+            train_str = str(train)
+            time_part = train_str.split("(")[1].split("~")[0]  # "09:44"
+            time_str = "".join(time_part.split(":"))  # "0944"
+            return int(time_str)
+        except (IndexError, ValueError) as e:
+            logger.error(f"Failed to extract departure time from train: {train}, error: {e}")
+            return 0
 
     @property
     def is_logged_in(self) -> bool:
