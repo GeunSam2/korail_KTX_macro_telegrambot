@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
-from models import UserSession, RunningReservation, PaymentStatus
+from models import UserSession, RunningReservation, PaymentStatus, MultiReservationStatus
 
 
 class StorageInterface(ABC):
@@ -106,4 +106,25 @@ class StorageInterface(ABC):
     @abstractmethod
     def set_waiting_for_admin_password(self, chat_id: int, waiting: bool = True) -> None:
         """Set whether user is waiting to enter admin password."""
+        pass
+
+    # Multi-Reservation Status Management
+    @abstractmethod
+    def get_multi_reservation_status(self, chat_id: int) -> Optional[MultiReservationStatus]:
+        """Get multi-reservation status by chat ID."""
+        pass
+
+    @abstractmethod
+    def save_multi_reservation_status(self, status: MultiReservationStatus) -> None:
+        """Save multi-reservation status."""
+        pass
+
+    @abstractmethod
+    def delete_multi_reservation_status(self, chat_id: int) -> None:
+        """Delete multi-reservation status."""
+        pass
+
+    @abstractmethod
+    def get_all_multi_reservation_statuses(self) -> List[MultiReservationStatus]:
+        """Get all multi-reservation statuses."""
         pass

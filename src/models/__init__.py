@@ -1,6 +1,9 @@
 """Data models for the application."""
 from models.user import UserCredentials, UserSession, UserProgress
-from models.reservation import TrainSearchParams, RunningReservation, PaymentStatus
+from models.reservation import (
+    TrainSearchParams, RunningReservation, PaymentStatus,
+    ReservationPaymentStatus, SingleReservationInfo, MultiReservationStatus
+)
 
 __all__ = [
     'UserCredentials',
@@ -9,4 +12,7 @@ __all__ = [
     'TrainSearchParams',
     'RunningReservation',
     'PaymentStatus',
+    'ReservationPaymentStatus',
+    'SingleReservationInfo',
+    'MultiReservationStatus',
 ]

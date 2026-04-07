@@ -83,12 +83,29 @@ class TelegramWebhook(Resource):
                 f"progress={progress_num}"
             )
 
-            # Check for payment reminder active state
+            # Check for payment reminder active state (single reservation)
             payment_status = self.storage.get_payment_status(chat_id)
             if payment_status and payment_status.reminder_active and not payment_status.completed:
                 # User sent any non-command message during payment reminder
                 if text and not text.startswith('/'):
                     self.payment_reminder.confirm_payment(chat_id)
+                    return make_response("OK")
+
+            # Check for multi-reservation reminder active state
+            multi_status = self.storage.get_multi_reservation_status(chat_id)
+            if multi_status and multi_status.should_show_reminder():
+                # User sent any non-command message during multi-reservation reminder
+                if text and not text.startswith('/'):
+                    # Mark all as paid and stop reminders
+                    from services import MultiReservationReminderService
+                    multi_reminder = MultiReservationReminderService(self.storage, self.telegram)
+                    multi_reminder.mark_all_paid(chat_id)
+
+                    # Send confirmation
+                    self.telegram.send_message(
+                        chat_id,
+                        "✅ 결제 완료 확인!\n\n모든 좌석의 결제 알림이 중단되었습니다."
+                    )
                     return make_response("OK")
 
             # Handle /cancel command first (works in any state)

@@ -7,6 +7,7 @@ service architecture while maintaining backward compatibility.
 """
 import sys
 import requests
+from datetime import datetime, timedelta
 from korail2 import TrainType, ReserveOption
 
 # Add src to path
@@ -14,7 +15,8 @@ sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from config.settings import settings
 from storage import InMemoryStorage
-from services import KorailService, TelegramService, PaymentReminderService
+from services import KorailService, TelegramService, PaymentReminderService, MultiReservationReminderService
+from models import MultiReservationStatus, SingleReservationInfo, ReservationPaymentStatus
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -55,6 +57,7 @@ class BackgroundReservationProcess:
         self.storage = InMemoryStorage()
         self.telegram = TelegramService(settings.TELEGRAM_BOT_TOKEN)
         self.payment_reminder = PaymentReminderService(self.storage, self.telegram)
+        self.multi_reminder = MultiReservationReminderService(self.storage, self.telegram)
         self.korail = KorailService()
 
         logger.info(
@@ -159,6 +162,10 @@ class BackgroundReservationProcess:
 💡 결제 완료 후 아무 메시지나 입력하시면 리마인더 알림이 중단됩니다.
 🔗 결제 링크: {settings.KORAIL_PAYMENT_URL}
 """
+
+                    # Create MultiReservationStatus for smart reminders
+                    self._create_multi_reservation_status(all_reservations, total_seats)
+
                 else:
                     seats_text = f"{self.passenger_count}명" if self.passenger_count > 1 else ""
                     consecutive_text = " (연속된 좌석)" if self.passenger_count > 1 else ""
@@ -180,9 +187,13 @@ class BackgroundReservationProcess:
 
                 self._send_callback(message, status=0)
 
-                # Start payment reminders (only once, even for multiple reservations)
-                logger.info(f"Starting payment reminders for chat_id={self.chat_id}")
-                self.payment_reminder.start_reminders(int(self.chat_id))
+                # Start appropriate payment reminders
+                if is_random and total_seats > 1:
+                    logger.info(f"Starting multi-reservation reminders for chat_id={self.chat_id}")
+                    self.multi_reminder.start_reminders(int(self.chat_id))
+                else:
+                    logger.info(f"Starting single payment reminders for chat_id={self.chat_id}")
+                    self.payment_reminder.start_reminders(int(self.chat_id))
 
             else:
                 logger.warning("Reservation failed - no result")
@@ -198,6 +209,55 @@ class BackgroundReservationProcess:
             self._send_callback(f"에러발생 : {e}", status=1)
 
         logger.info(f"Reservation process ended for {self.username}")
+
+    def _create_multi_reservation_status(self, all_reservations: list, total_seats: int) -> None:
+        """
+        Create MultiReservationStatus for tracking individual seat payment.
+
+        Args:
+            all_reservations: List of reservation objects from korail2
+            total_seats: Total number of seats reserved
+        """
+        try:
+            now = datetime.now()
+            expires_at = now + timedelta(minutes=settings.PAYMENT_TIMEOUT_MINUTES)
+
+            # Create SingleReservationInfo for each reservation
+            reservation_infos = []
+            for i, res in enumerate(all_reservations):
+                # Extract reservation ID (try to get from korail2 object)
+                rsv_id = getattr(res, 'rsv_id', f"unknown_{i+1}")
+
+                info = SingleReservationInfo(
+                    reservation_id=rsv_id,
+                    reservation_obj=res,
+                    reserved_at=now,
+                    expires_at=expires_at,
+                    status=ReservationPaymentStatus.PENDING,
+                    seat_number=i + 1,
+                    train_info=str(res)
+                )
+                reservation_infos.append(info)
+
+            # Create MultiReservationStatus
+            multi_status = MultiReservationStatus(
+                chat_id=int(self.chat_id),
+                reservations=reservation_infos,
+                total_seats=total_seats,
+                seat_strategy=self.seat_strategy,
+                created_at=now,
+                manually_stopped=False
+            )
+
+            # Save to storage
+            self.storage.save_multi_reservation_status(multi_status)
+            logger.info(
+                f"Created MultiReservationStatus for chat_id={self.chat_id} "
+                f"with {len(reservation_infos)} reservations"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to create MultiReservationStatus: {e}", exc_info=True)
 
     def _send_callback(self, message: str, status: int = 0):
         """

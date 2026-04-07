@@ -1,7 +1,7 @@
 """In-memory storage implementation (current behavior)."""
 from typing import Optional, List, Dict
 
-from models import UserSession, RunningReservation, PaymentStatus
+from models import UserSession, RunningReservation, PaymentStatus, MultiReservationStatus
 from storage.base import StorageInterface
 
 
@@ -20,6 +20,7 @@ class InMemoryStorage(StorageInterface):
         self._subscribers: set[int] = set()
         self._admin_sessions: set[int] = set()  # Track authenticated admin sessions
         self._admin_password_pending: set[int] = set()  # Track users waiting to enter admin password
+        self._multi_reservation_statuses: Dict[int, MultiReservationStatus] = {}  # Track multi-reservation payment status
 
     # User Session Management
     def get_user_session(self, chat_id: int) -> Optional[UserSession]:
@@ -110,3 +111,21 @@ class InMemoryStorage(StorageInterface):
             self._admin_password_pending.add(chat_id)
         else:
             self._admin_password_pending.discard(chat_id)
+
+    # Multi-Reservation Status Management
+    def get_multi_reservation_status(self, chat_id: int) -> Optional[MultiReservationStatus]:
+        """Get multi-reservation status by chat ID."""
+        return self._multi_reservation_statuses.get(chat_id)
+
+    def save_multi_reservation_status(self, status: MultiReservationStatus) -> None:
+        """Save multi-reservation status."""
+        self._multi_reservation_statuses[status.chat_id] = status
+
+    def delete_multi_reservation_status(self, chat_id: int) -> None:
+        """Delete multi-reservation status."""
+        if chat_id in self._multi_reservation_statuses:
+            del self._multi_reservation_statuses[chat_id]
+
+    def get_all_multi_reservation_statuses(self) -> List[MultiReservationStatus]:
+        """Get all multi-reservation statuses."""
+        return list(self._multi_reservation_statuses.values())
