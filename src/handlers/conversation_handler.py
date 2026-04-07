@@ -107,7 +107,8 @@ class ConversationHandler:
         elif is_yes is False:
             session.reset()
             self.storage.save_user_session(session)
-            self.telegram.send_message(chat_id, "예매 진행을 취소합니다.")
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.CANCEL_START_CONFIRMATION)
         else:
             self.telegram.send_message(chat_id, error)
 
@@ -119,7 +120,8 @@ class ConversationHandler:
         if not username or not password:
             session.reset()
             self.storage.save_user_session(session)
-            self.telegram.send_message(chat_id, "컨테이너에 환경변수가 초기화되지 않았습니다.")
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.ERROR_ADMIN_ENV)
             return
 
         # Try login
@@ -132,7 +134,8 @@ class ConversationHandler:
         else:
             session.reset()
             self.storage.save_user_session(session)
-            self.telegram.send_message(chat_id, "관리자 계정으로 로그인에 문제가 발생하였습니다.")
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.ERROR_ADMIN_LOGIN)
 
     def _handle_phone_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle phone number input."""
@@ -227,14 +230,8 @@ class ConversationHandler:
         session.last_action = UserProgress.DST_LOCATE_INPUT_SUCCESS
         self.storage.save_user_session(session)
 
-        message = """
-도착역 입력이 완료되었습니다.
-열차 검색을 시작할 기준 시각정보를 입력해주세요.
-
-형식은 HHMM (HH : 시, MM : 분)이며 0-23시 기준입니다. 반드시 4자리로 입력해 주십시오.
-(ex_ 13시 5분 이후 기차만 검색 : 1305)
-"""
-        self.telegram.send_message(chat_id, message)
+        from telegramBot.messages import Messages
+        self.telegram.send_message(chat_id, Messages.REQUEST_DST_STATION)
 
     def _handle_dep_time_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle departure time input."""
@@ -248,16 +245,8 @@ class ConversationHandler:
         session.last_action = UserProgress.DEP_TIME_INPUT_SUCCESS
         self.storage.save_user_session(session)
 
-        message = """
-열차 검색 시작 기준 시각 입력이 완료되었습니다.
-열차 검색 최대 임계 시각정보를 입력해주세요.
-
-* 임계시각을 지정하지 않으시려면 2400을 입력하세요.(권장)
-
-형식은 HHMM (HH : 시, MM : 분)이며 0-23시 기준입니다. 반드시 4자리로 입력해 주십시오.
-(ex_ 13시 5분 이전 기차만 검색 : 1305)
-"""
-        self.telegram.send_message(chat_id, message)
+        from telegramBot.messages import Messages
+        self.telegram.send_message(chat_id, Messages.REQUEST_DEP_TIME)
 
     def _handle_max_dep_time_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle max departure time input."""
@@ -274,18 +263,8 @@ class ConversationHandler:
         session.last_action = UserProgress.MAX_DEP_TIME_INPUT_SUCCESS
         self.storage.save_user_session(session)
 
-        message = """
-기준 시각 입력이 완료되었습니다.
-이용할 열차의 타입을 선택해 주십시오.
-
-=================
-1. KTX 및 KTX-산천 열차만 예약
-2. 모든 열차 형식 포함하여 예약
-=================
-
-1 또는 2를 입력해 주십시오.
-"""
-        self.telegram.send_message(chat_id, message)
+        from telegramBot.messages import Messages
+        self.telegram.send_message(chat_id, Messages.REQUEST_TRAIN_TYPE)
 
     def _handle_train_type_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle train type selection."""
@@ -305,20 +284,8 @@ class ConversationHandler:
         session.last_action = UserProgress.TRAIN_TYPE_INPUT_SUCCESS
         self.storage.save_user_session(session)
 
-        message = """
-이용할 열차의 타입 입력이 완료되었습니다.
-특실 예매에 대한 타입을 입력해 주십시오.
-
-=================
-1. 일반실 우선 예약
-2. 일반실만 예약
-3. 특실 우선 예약
-4. 특실만 예약
-=================
-
-1, 2, 3, 4 중 하나를 선택해 주십시오.
-"""
-        self.telegram.send_message(chat_id, message)
+        from telegramBot.messages import Messages
+        self.telegram.send_message(chat_id, Messages.REQUEST_SEAT_TYPE)
 
     def _handle_special_option_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle special seat option selection."""
@@ -343,27 +310,20 @@ class ConversationHandler:
         self.storage.save_user_session(session)
 
         # Ask for passenger count
-        message = """
-특실 예매 타입 입력이 완료되었습니다.
-탑승 인원수를 입력해 주십시오.
-
-💡 1~9명까지 선택 가능합니다.
-(현재는 성인 인원수만 지원합니다)
-
-예) 2명이 탑승하는 경우: 2
-"""
-        self.telegram.send_message(chat_id, message)
+        from telegramBot.messages import Messages
+        self.telegram.send_message(chat_id, Messages.REQUEST_PASSENGER_COUNT)
 
     def _handle_passenger_count_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle passenger count input."""
         # Validate input
+        from telegramBot.messages import Messages
         if not text.isdigit():
-            self.telegram.send_message(chat_id, "숫자를 입력해주세요. (1~9)")
+            self.telegram.send_message(chat_id, Messages.ERROR_PASSENGER_COUNT_NOT_DIGIT)
             return
 
         count = int(text)
         if count < 1 or count > 9:
-            self.telegram.send_message(chat_id, "1~9명 사이의 인원수를 입력해주세요.")
+            self.telegram.send_message(chat_id, Messages.ERROR_PASSENGER_COUNT_RANGE)
             return
 
         # Save passenger count
@@ -373,25 +333,8 @@ class ConversationHandler:
 
         # Ask for seat strategy if more than 1 passenger
         if count > 1:
-            message = f"""
-인원수 입력이 완료되었습니다. (총 {count}명)
-
-좌석 배치 방식을 선택해 주십시오.
-
-=================
-1. 연속 좌석 (권장)
-   - 같이 앉을 수 있도록 연속된 좌석 예약
-   - 연속된 좌석이 없으면 예약 실패
-
-2. 랜덤 배치
-   - 한 자리씩 개별적으로 예약
-   - 좌석이 떨어져 있을 수 있음
-   - 예약 성공률이 더 높음
-=================
-
-1 또는 2를 입력해 주십시오.
-"""
-            self.telegram.send_message(chat_id, message)
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.REQUEST_SEAT_STRATEGY.format(count=count))
         else:
             # Single passenger, skip seat strategy
             session.train_info['seatStrategy'] = 'consecutive'
@@ -402,7 +345,8 @@ class ConversationHandler:
     def _handle_seat_strategy_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle seat strategy selection."""
         if text not in ["1", "2"]:
-            self.telegram.send_message(chat_id, "1 또는 2를 입력해주세요.")
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.ERROR_SEAT_STRATEGY_INVALID)
             return
 
         strategy = "consecutive" if text == "1" else "random"
@@ -483,10 +427,8 @@ class ConversationHandler:
             logger.error(f"Failed to start reservation for chat_id={chat_id}")
             session.reset()
             self.storage.save_user_session(session)
-            self.telegram.send_message(
-                chat_id,
-                "예약 프로세스 시작에 실패했습니다. 다시 시도해주세요."
-            )
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.ERROR_RESERVATION_START_FAILED)
 
     def _handle_already_processing(self, chat_id: int, session: UserSession) -> None:
         """Handle message when reservation is already in progress."""

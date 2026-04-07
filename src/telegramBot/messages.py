@@ -144,6 +144,34 @@ class Messages:
 숫자를 입력하세요: 1, 2, 3, 4
 """
 
+    REQUEST_PASSENGER_COUNT = """✅ 좌석 종류 선택 완료
+
+👥 탑승 인원수를 입력해주세요.
+
+💡 1~9명까지 선택 가능합니다.
+(현재는 성인 인원수만 지원합니다)
+
+예) 2명이 탑승하는 경우: 2
+"""
+
+    REQUEST_SEAT_STRATEGY = """✅ 인원수 입력 완료 (총 {count}명)
+
+🪑 좌석 배치 방식을 선택해 주십시오.
+
+━━━━━━━━━━━━━━━━━━━━
+1️⃣ 연속 좌석 (권장)
+   • 같이 앉을 수 있도록 연속된 좌석 예약
+   • 연속된 좌석이 없으면 예약 실패
+
+2️⃣ 랜덤 배치
+   • 한 자리씩 개별적으로 예약
+   • 좌석이 떨어져 있을 수 있음
+   • 예약 성공률이 더 높음
+━━━━━━━━━━━━━━━━━━━━
+
+숫자를 입력하세요: 1 또는 2
+"""
+
     CONFIRM_RESERVATION = """✅ 모든 정보 입력 완료!
 
 📋 예약 정보 확인
@@ -203,6 +231,9 @@ class Messages:
     ERROR_TIME_FORMAT = "❌ 시간 형식이 올바르지 않습니다.\nHHMM 형식 4자리로 입력해주세요.\n예시: 1430 (오후 2시 30분)"
     ERROR_TRAIN_TYPE_INVALID = "❌ 1 또는 2를 입력해주세요."
     ERROR_SEAT_TYPE_INVALID = "❌ 1, 2, 3, 4 중 하나를 입력해주세요."
+    ERROR_PASSENGER_COUNT_NOT_DIGIT = "❌ 숫자를 입력해주세요. (1~9)"
+    ERROR_PASSENGER_COUNT_RANGE = "❌ 1~9명 사이의 인원수를 입력해주세요."
+    ERROR_SEAT_STRATEGY_INVALID = "❌ 1 또는 2를 입력해주세요."
     ERROR_CONFIRM_INVALID = """❌ 올바른 응답을 입력해주세요.
 
 • Y 또는 예 → 예약 시작
@@ -210,6 +241,7 @@ class Messages:
 """
     ERROR_ADMIN_ENV = "⚠️ 서버 환경변수가 설정되지 않았습니다."
     ERROR_ADMIN_LOGIN = "⚠️ 관리자 계정 로그인에 실패했습니다."
+    ERROR_RESERVATION_START_FAILED = "❌ 예약 프로세스 시작에 실패했습니다.\n다시 시도해주세요."
     ERROR_NOT_SUBSCRIBER = """⚠️ 구독이 필요한 서비스입니다.
 
 2024년부터 본 서비스가 유료화되었습니다.
@@ -223,6 +255,7 @@ class Messages:
     CANCELLED = "✅ 예약이 취소되었습니다."
     CANCELLED_BY_USER = "🚫 예약을 취소합니다."
     CANCELLED_TYPO = "✅ 예약이 취소되었습니다."
+    CANCEL_START_CONFIRMATION = "🚫 예매 진행을 취소합니다."
 
     PAYMENT_CONFIRMED = """✅ 결제 완료 확인!
 
