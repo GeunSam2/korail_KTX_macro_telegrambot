@@ -11,7 +11,10 @@ from datetime import datetime, timedelta
 from korail2 import TrainType, ReserveOption
 
 # Add src to path
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.dirname(script_dir)
+sys.path.insert(0, src_dir)
 
 from config.settings import settings
 from storage import InMemoryStorage

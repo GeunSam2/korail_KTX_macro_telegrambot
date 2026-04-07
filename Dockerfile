@@ -6,8 +6,12 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY src/ .
+# Copy src directory while preserving structure
+COPY src/ /app/src/
 
-EXPOSE 8080 
+# Set PYTHONPATH so imports work correctly
+ENV PYTHONPATH=/app/src
 
-ENTRYPOINT ["python", "app.py"]
+EXPOSE 8080
+
+ENTRYPOINT ["python", "/app/src/app.py"]
