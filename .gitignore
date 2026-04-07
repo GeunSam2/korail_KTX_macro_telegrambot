@@ -3,3 +3,6 @@
 certs_real/*
 *.pem
 botToken.py
+.env
+.envrc
+.mise.local.toml

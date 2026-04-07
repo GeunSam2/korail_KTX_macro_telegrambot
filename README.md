@@ -32,14 +32,38 @@ make run         # 실행
 
 ### 로컬 개발 (macOS/Linux)
 
+#### 방법 1: mise 사용 (권장)
+
+```bash
+# 1. mise 설치 (없는 경우)
+brew install mise
+
+# 2. 환경 변수 설정
+cp .env.example .env
+# .env 파일을 열어서 실제 값으로 수정
+
+# 3. mise 활성화 (자동으로 .env 로드)
+mise trust
+mise install
+
+# 4. 의존성 설치 및 실행
+pipenv install
+pipenv run python src/app.py
+```
+
+#### 방법 2: pipenv 직접 사용
+
 ```bash
 # 1. 개발 환경 설정 (처음 한 번만)
 make setup         # pipenv, pyenv 설치 (없는 경우)
 
-# 2. 의존성 설치
+# 2. 환경 변수 설정
+export BOTTOKEN=your_telegram_bot_token
+
+# 3. 의존성 설치
 make install       # pipenv install 실행
 
-# 3. 실행
+# 4. 실행
 make run           # 애플리케이션 실행
 
 # 또는 쉘에 진입하여 실행

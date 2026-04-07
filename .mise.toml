@@ -1,0 +1,5 @@
+# mise will automatically load .env file
+# Create a .env file with your environment variables
+
+[tools]
+python = "3.9"
