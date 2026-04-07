@@ -97,3 +97,13 @@ class StorageInterface(ABC):
     def set_admin_authenticated(self, chat_id: int, authenticated: bool = True) -> None:
         """Set admin authentication status for chat ID."""
         pass
+
+    @abstractmethod
+    def is_waiting_for_admin_password(self, chat_id: int) -> bool:
+        """Check if user is waiting to enter admin password."""
+        pass
+
+    @abstractmethod
+    def set_waiting_for_admin_password(self, chat_id: int, waiting: bool = True) -> None:
+        """Set whether user is waiting to enter admin password."""
+        pass

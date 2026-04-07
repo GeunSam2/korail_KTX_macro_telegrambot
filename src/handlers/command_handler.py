@@ -79,6 +79,9 @@ class CommandHandler:
             session.reset()
             self.storage.save_user_session(session)
 
+        # Clear admin password waiting state if any
+        self.storage.set_waiting_for_admin_password(chat_id, False)
+
 
     def handle_subscribe(self, chat_id: int) -> None:
         """
@@ -251,8 +254,9 @@ class CommandHandler:
             # Already authenticated, execute command
             handler_func(chat_id)
         else:
-            # Request password
+            # Request password and mark as waiting
             from telegramBot.messages import Messages
+            self.storage.set_waiting_for_admin_password(chat_id, True)
             self.telegram.send_message(chat_id, Messages.ADMIN_AUTH_REQUIRED)
             logger.info(f"Admin authentication required for chat_id={chat_id}")
 
@@ -268,6 +272,9 @@ class CommandHandler:
             True if authenticated successfully
         """
         from telegramBot.messages import Messages
+
+        # Clear waiting state
+        self.storage.set_waiting_for_admin_password(chat_id, False)
 
         if password == settings.ADMIN_PASSWORD:
             self.storage.set_admin_authenticated(chat_id, True)

@@ -103,16 +103,14 @@ class TelegramWebhook(Resource):
                 # Handle conversation flow
                 self.conversation_handler.handle_message(chat_id, text)
             else:
-                # Check if waiting for admin password
-                # If text looks like a password attempt (not empty, not command)
-                if text and not text.startswith('/'):
-                    # Try admin password authentication
+                # Check if explicitly waiting for admin password
+                if self.storage.is_waiting_for_admin_password(chat_id):
+                    # User is waiting to enter admin password
                     if self.command_handler.handle_admin_password(chat_id, text):
-                        # Successfully authenticated, ask user what command they want
-                        self.telegram.send_message(
-                            chat_id,
-                            "✅ 관리자 인증 완료! 이제 관리자 명령어를 사용할 수 있습니다."
-                        )
+                        # Successfully authenticated
+                        return make_response("OK")
+                    else:
+                        # Failed authentication
                         return make_response("OK")
 
                 # No active session and not a command

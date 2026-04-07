@@ -19,6 +19,7 @@ class InMemoryStorage(StorageInterface):
         self._payment_statuses: Dict[int, PaymentStatus] = {}
         self._subscribers: set[int] = set()
         self._admin_sessions: set[int] = set()  # Track authenticated admin sessions
+        self._admin_password_pending: set[int] = set()  # Track users waiting to enter admin password
 
     # User Session Management
     def get_user_session(self, chat_id: int) -> Optional[UserSession]:
@@ -98,3 +99,14 @@ class InMemoryStorage(StorageInterface):
             self._admin_sessions.add(chat_id)
         else:
             self._admin_sessions.discard(chat_id)
+
+    def is_waiting_for_admin_password(self, chat_id: int) -> bool:
+        """Check if user is waiting to enter admin password."""
+        return chat_id in self._admin_password_pending
+
+    def set_waiting_for_admin_password(self, chat_id: int, waiting: bool = True) -> None:
+        """Set whether user is waiting to enter admin password."""
+        if waiting:
+            self._admin_password_pending.add(chat_id)
+        else:
+            self._admin_password_pending.discard(chat_id)
