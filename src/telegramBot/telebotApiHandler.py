@@ -1,4 +1,4 @@
-from .korail2.korail2 import ReserveOption, TrainType
+from korail2 import ReserveOption, TrainType
 from flask import request, make_response
 from flask_restful import Resource
 from datetime import datetime
