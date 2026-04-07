@@ -1,5 +1,11 @@
-# mise will automatically load .env file
-# Create a .env file with your environment variables
+# mise configuration
+#
+# Environment variables loading order:
+# 1. .env.default (default values, committed to git)
+# 2. .env (local overrides, not committed)
+
+[env]
+_.file = [".env.default", ".env"]
 
 [tools]
 python = "3.9"

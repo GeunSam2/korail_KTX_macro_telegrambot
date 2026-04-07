@@ -39,10 +39,10 @@ make run         # 실행
 brew install mise
 
 # 2. 환경 변수 설정
-cp .env.example .env
-# .env 파일을 열어서 실제 값으로 수정
+cp .env.default .env
+# .env 파일을 열어서 BOTTOKEN 등 실제 값으로 수정
 
-# 3. mise 활성화 (자동으로 .env 로드)
+# 3. mise 활성화 (자동으로 .env.default와 .env 로드)
 mise trust
 mise install
 
@@ -50,6 +50,10 @@ mise install
 pipenv install
 pipenv run python src/app.py
 ```
+
+**mise 환경변수 로딩 순서:**
+1. `.env.default` - 기본값 (git에 커밋됨)
+2. `.env` - 로컬 오버라이드 (git에 커밋되지 않음)
 
 #### 방법 2: pipenv 직접 사용
 
