@@ -36,7 +36,7 @@ jobs:
         name: SSH Remote Commands
         uses: appleboy/ssh-action@v1.2.0     
         with:
-            host: server.geunsam2.xyz   
+            host: grayplace.net   
             username: ${{ secrets.SSH_USERNAME }}
             key: ${{ secrets.SSH_KEY }}
             port: 22
