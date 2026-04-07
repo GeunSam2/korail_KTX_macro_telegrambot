@@ -27,7 +27,7 @@ requirements:	## Generate requirements.txt from Pipfile.lock (for Docker)
 
 .PHONY: build
 build:			## Build Docker Image
-	docker build -t ${IMAGE_NAME} -f docker/Dockerfile .
+	docker build -t ${IMAGE_NAME} .
 
 .PHONY: publish
 publish: build	## Publish Docker Image
