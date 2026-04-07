@@ -31,8 +31,8 @@ jobs:
             platforms: linux/amd64
             push: true
             tags: geunsam2/korailbot:latest
-            cache-from: type=registry,ref=geunsam2/korailbot:buildcache
-            cache-to: type=registry,ref=geunsam2/korailbot:buildcache,mode=max
+            cache-from: type=gha
+            cache-to: type=gha,mode=max
 
     - 
         name: SSH Remote Commands
