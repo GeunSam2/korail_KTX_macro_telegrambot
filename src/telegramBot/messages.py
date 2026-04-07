@@ -314,14 +314,20 @@ class Messages:
         return Messages.LOGIN_FAILED_RETRY.format(username=username)
 
     @staticmethod
-    def request_departure_date():
-        """Request departure date (compatibility method)"""
+    def request_departure_station():
+        """Request departure station (compatibility method)"""
         return Messages.REQUEST_SRC_STATION
 
     @staticmethod
     def request_arrival_station():
         """Request arrival station (compatibility method)"""
         return Messages.REQUEST_DST_STATION
+
+    @staticmethod
+    def request_departure_date():
+        """Request departure date (deprecated - use request_departure_station)"""
+        # This method name is misleading but kept for backward compatibility
+        return Messages.REQUEST_SRC_STATION
 
     @staticmethod
     def not_in_allow_list():

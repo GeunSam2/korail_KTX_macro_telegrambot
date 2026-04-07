@@ -200,7 +200,7 @@ class ConversationHandler:
         session.train_info['depDate'] = text
         session.last_action = UserProgress.DATE_INPUT_SUCCESS
         self.storage.save_user_session(session)
-        self.telegram.send_message(chat_id, MessageTemplates.request_departure_date())
+        self.telegram.send_message(chat_id, MessageTemplates.request_departure_station())
 
     def _handle_src_station_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle source station input."""
