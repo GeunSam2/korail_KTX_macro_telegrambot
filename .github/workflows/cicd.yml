@@ -31,7 +31,8 @@ jobs:
             platforms: linux/amd64
             push: true
             tags: geunsam2/korailbot:latest
-            no-cache: true  # Force rebuild without cache to ensure latest code
+            cache-from: type=gha
+            cache-to: type=gha,mode=max
 
     -
         name: SSH Remote Commands
