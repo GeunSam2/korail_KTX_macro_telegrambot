@@ -96,11 +96,6 @@ class TelegramWebhook(Resource):
                 self.command_handler.handle_cancel(chat_id)
                 return make_response("OK")
 
-            # Handle payment done command
-            if text in ["/결제완료", "/paymentdone"]:
-                self.command_handler.handle_payment_done(chat_id)
-                return make_response("OK")
-
             # Route commands
             if self.command_handler.is_command(text):
                 self.command_handler.route_command(chat_id, text)

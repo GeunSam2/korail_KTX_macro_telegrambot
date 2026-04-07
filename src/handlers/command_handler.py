@@ -79,20 +79,6 @@ class CommandHandler:
             session.reset()
             self.storage.save_user_session(session)
 
-    def handle_payment_done(self, chat_id: int) -> None:
-        """
-        Handle /결제완료 or /paymentdone command.
-
-        Args:
-            chat_id: Telegram chat ID
-        """
-        logger.info(f"Handling /paymentdone for chat_id={chat_id}")
-
-        # Confirm payment
-        self.payment_reminder.confirm_payment(chat_id)
-
-        # Send confirmation
-        self.telegram.send_message(chat_id, MessageTemplates.payment_confirmed())
 
     def handle_subscribe(self, chat_id: int) -> None:
         """
@@ -235,8 +221,6 @@ class CommandHandler:
             self.handle_start(chat_id)
         elif command == "/cancel":
             self.handle_cancel(chat_id)
-        elif command in ["/결제완료", "/paymentdone"]:
-            self.handle_payment_done(chat_id)
         elif command == "/subscribe":
             self.handle_subscribe(chat_id)
         elif command == "/status":

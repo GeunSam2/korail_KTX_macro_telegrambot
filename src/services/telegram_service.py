@@ -207,12 +207,12 @@ class MessageTemplates:
         """Help message with available commands."""
         return """
 - 예약 시작 : /start
-- 결제 완료 : /결제완료 (리마인더 중단)
-- 구독 시작 : /subscribe
 - 예약 상태 확인 : /status
 - 전체 취소 : /cancelall
 - 전체 유저 확인 : /allusers
 - 공지 : /broadcast [메시지]
+
+💡 결제 알림은 예약 성공 후 아무 메시지나 입력하면 중단됩니다.
 """
 
     @staticmethod

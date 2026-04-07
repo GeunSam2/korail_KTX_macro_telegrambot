@@ -166,9 +166,7 @@ class Index(Resource):
             self.handleAdminAuth(chatId, getText)
             return make_response("OK")
 
-        if (getText == "/결제완료" or getText == "/paymentdone"):
-            self.confirmPayment(chatId)
-        elif (getText == "/subscribe"):
+        if (getText == "/subscribe"):
             self.requireAdminAuth(chatId, "/subscribe")
         elif (getText == "/status"):
             self.getStatusInfo(chatId)
