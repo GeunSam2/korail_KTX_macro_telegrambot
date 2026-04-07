@@ -48,7 +48,7 @@ jobs:
                 docker pull geunsam2/korailbot:latest
                 docker rm -f korailreserve
                 docker run -it -d \
-                    -p 8888:8080 \
+                    -p 8000:8080 \
                     --restart always \
                     -e USERID='${{ secrets.ADMIN_USERID }}' \
                     -e USERPW='${{ secrets.ADMIN_PASSWD}}' \
