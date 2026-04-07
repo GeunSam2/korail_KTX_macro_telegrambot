@@ -34,15 +34,15 @@ jobs:
             cache-from: type=gha
             cache-to: type=gha,mode=max
 
-    - 
+    -
         name: SSH Remote Commands
-        uses: appleboy/ssh-action@v1.2.0     
+        uses: appleboy/ssh-action@v1.2.0
         with:
-            host: grayplace.net   
+            host: server.geunsam2.xyz
             username: ${{ secrets.SSH_USERNAME }}
-            key: ${{ secrets.SSH_KEY }}
+            password: ${{ secrets.SSH_PASSWORD }}
             port: 22
-            timeout: 40s  # 30초 기본        
+            timeout: 40s  # 30초 기본
             script: |
                 docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
                 docker pull geunsam2/korailbot:latest

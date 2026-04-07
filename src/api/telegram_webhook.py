@@ -1,0 +1,180 @@
+"""Telegram webhook API endpoint."""
+from flask import request, make_response
+from flask_restful import Resource
+
+from storage.base import StorageInterface
+from services import TelegramService, ReservationService, PaymentReminderService
+from handlers import CommandHandler, ConversationHandler
+from models import PaymentStatus
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class TelegramWebhook(Resource):
+    """
+    Flask-RESTful resource for handling Telegram webhook callbacks.
+
+    This replaces the old Index class from telebotApiHandler.py
+    """
+
+    def __init__(
+        self,
+        storage: StorageInterface,
+        telegram_service: TelegramService,
+        reservation_service: ReservationService,
+        payment_reminder_service: PaymentReminderService,
+        **kwargs
+    ):
+        """
+        Initialize webhook handler.
+
+        Args:
+            storage: Storage interface
+            telegram_service: Telegram messaging service
+            reservation_service: Reservation service
+            payment_reminder_service: Payment reminder service
+        """
+        super().__init__(**kwargs)
+        self.storage = storage
+        self.telegram = telegram_service
+        self.reservation = reservation_service
+        self.payment_reminder = payment_reminder_service
+
+        # Initialize handlers
+        self.command_handler = CommandHandler(
+            storage, telegram_service, reservation_service, payment_reminder_service
+        )
+        self.conversation_handler = ConversationHandler(
+            storage, telegram_service, reservation_service
+        )
+
+    def post(self):
+        """
+        Handle POST request from Telegram webhook.
+
+        This is called when users send messages to the bot.
+        """
+        try:
+            data = request.json
+
+            # Ignore edited messages and chat member updates
+            if "edited_message" in data or "my_chat_member" in data:
+                return make_response("OK")
+
+            # Extract message
+            try:
+                message = data['message']
+                text = message['text'].strip()
+                chat_id = int(message['chat']['id'])
+            except (KeyError, ValueError) as e:
+                logger.error(f"Invalid message format: {e}")
+                return make_response("OK")
+
+            logger.info(f"Received message from chat_id={chat_id}: {text}")
+
+            # Get user session to check progress
+            session = self.storage.get_user_session(chat_id)
+            in_progress = session.in_progress if session else False
+            progress_num = session.last_action if session else 0
+
+            logger.debug(
+                f"chat_id={chat_id}, in_progress={in_progress}, "
+                f"progress={progress_num}"
+            )
+
+            # Check for payment reminder active state
+            payment_status = self.storage.get_payment_status(chat_id)
+            if payment_status and payment_status.reminder_active and not payment_status.completed:
+                # User sent any non-command message during payment reminder
+                if text and not text.startswith('/'):
+                    self.payment_reminder.confirm_payment(chat_id)
+                    return make_response("OK")
+
+            # Handle /cancel command first (works in any state)
+            if text == "/cancel":
+                self.command_handler.handle_cancel(chat_id)
+                return make_response("OK")
+
+            # Handle payment done command
+            if text in ["/결제완료", "/paymentdone"]:
+                self.command_handler.handle_payment_done(chat_id)
+                return make_response("OK")
+
+            # Route commands
+            if self.command_handler.is_command(text):
+                self.command_handler.route_command(chat_id, text)
+            elif in_progress:
+                # Handle conversation flow
+                self.conversation_handler.handle_message(chat_id, text)
+            else:
+                # No active session and not a command
+                self.telegram.send_message(
+                    chat_id,
+                    "[진행중인 예약프로세스가 없습니다]\n/start 를 입력하여 작업을 시작하세요."
+                )
+
+            return make_response("OK")
+
+        except Exception as e:
+            logger.error(f"Error handling webhook: {e}", exc_info=True)
+            return make_response("OK")  # Still return OK to Telegram
+
+    def get(self):
+        """
+        Handle GET request for callbacks from background processes.
+
+        This is used by the background reservation process to notify
+        the bot about reservation results.
+        """
+        try:
+            # Extract parameters
+            chat_id = request.args.get('chatId')
+            msg = request.args.get('msg')
+            status = request.args.get('status')
+
+            if not all([chat_id, msg, status]):
+                logger.warning("Incomplete callback parameters")
+                return make_response("OK")
+
+            chat_id = int(chat_id)
+            logger.info(f"Callback from background process: chat_id={chat_id}, status={status}")
+
+            # Send message to user
+            self.telegram.send_message(chat_id, msg)
+
+            # If reservation successful (status == 0)
+            if str(status) == "0":
+                logger.info(f"Reservation successful for chat_id={chat_id}")
+
+                # Reset user session
+                session = self.storage.get_user_session(chat_id)
+                if session:
+                    session.reset()
+                    self.storage.save_user_session(session)
+
+                # Initialize payment reminder
+                payment_status = PaymentStatus(
+                    chat_id=chat_id,
+                    completed=False,
+                    reminder_active=True
+                )
+                self.storage.save_payment_status(payment_status)
+
+                # Clean up running reservation
+                self.storage.delete_running_reservation(chat_id)
+
+                # Notify subscribers
+                subscribers = self.storage.get_all_subscribers()
+                if session and session.credentials:
+                    user_id = session.credentials.korail_id
+                    self.telegram.send_to_multiple(
+                        subscribers,
+                        f"{user_id}의 예약이 종료되었습니다."
+                    )
+
+            return make_response("OK")
+
+        except Exception as e:
+            logger.error(f"Error handling callback: {e}", exc_info=True)
+            return make_response("OK")

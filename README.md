@@ -1,7 +1,5 @@
 # 코레일 KTX 예매 텔레그램 챗봇
 
-> 아... 지금 보니까 전부 다 리펙토링 하고 싶은데 귀찮다....
-
 매진된 KTX 열차를 자동으로 모니터링하여 좌석이 나오면 예약해주는 텔레그램 봇입니다.
 
 ## 빠른 시작
@@ -170,3 +168,28 @@ pipenv update korail2
 # requirements.txt 재생성
 make requirements
 ```
+
+## 프로젝트 구조
+
+```
+src/
+├── app.py                          # Flask 앱 진입점
+├── config/                         # 설정 관리
+├── models/                         # 데이터 모델
+├── services/                       # 비즈니스 로직
+├── storage/                        # 상태 관리
+├── handlers/                       # 요청 처리
+├── api/                            # API 엔드포인트
+├── utils/                          # 유틸리티
+└── telegramBot/                    # 레거시 코드
+
+tests/                              # 테스트
+```
+
+## 기술 스택
+
+- **Backend**: Flask, Flask-RESTful, Flask-CORS
+- **Telegram**: python-telegram-bot
+- **Korail API**: [dhfhfk/korail2](https://github.com/dhfhfk/korail2/tree/bypassDynapath)
+- **Testing**: pytest
+- **Deployment**: Docker
