@@ -1,0 +1,310 @@
+"""
+텔레그램 봇 메시지 템플릿 관리
+
+모든 봇 메시지를 중앙에서 관리하여 유지보수성을 향상시킵니다.
+"""
+
+
+class Messages:
+    """봇 메시지 템플릿 클래스"""
+
+    # ========== 시작 및 안내 메시지 ==========
+    INIT = "코레일 예약봇입니다.\n시작하시려면 /start를 입력해주세요."
+
+    WELCOME = """🚄 근삼 코레일 봇을 이용해 주셔서 감사합니다.
+
+본 프로그램은 매진 열차 자동 예약을 위한 서비스입니다.
+예약 완료 시 결제는 10분 이내에 직접 진행해주셔야 합니다.
+
+📋 예약 정보 입력 순서
+━━━━━━━━━━━━━━━━
+  1. 코레일 로그인 정보
+  2. 출발 희망일
+  3. 출발역
+  4. 도착역
+━━━━━━━━━━━━━━━━
+
+계속 진행하시려면 "예" 또는 "Y"를 입력해주세요.
+"""
+
+    HELP = """📌 사용 가능한 명령어
+
+🎫 예약 관련
+  /start - 예약 시작
+  /cancel - 진행 중인 예약 취소
+  /결제완료 - 결제 완료 알림
+
+ℹ️ 정보 확인
+  /status - 예약 상태 확인
+  /help - 도움말 보기
+
+🔧 관리자 명령어 (인증 필요)
+  /subscribe - 알림 구독
+  /allusers - 전체 사용자 확인
+  /cancelall - 전체 예약 취소
+  /broadcast [메시지] - 공지사항 전송
+"""
+
+    # ========== 로그인 관련 메시지 ==========
+    REQUEST_PHONE = """📱 코레일 로그인 정보 입력을 시작합니다.
+
+현재 휴대폰 번호 로그인만 지원됩니다.
+
+휴대전화번호를 입력해 주세요.
+예시: 010-1234-5678
+
+⚠️ 하이픈(-)을 반드시 포함하여 입력해주세요.
+💡 취소를 원하시면 /cancel을 입력하세요.
+"""
+
+    REQUEST_PASSWORD = """✅ 아이디 입력 완료
+
+🔒 비밀번호를 입력해주세요.
+"""
+
+    LOGIN_SUCCESS = """✅ 로그인 성공!
+
+📅 출발 희망일을 8자리로 입력해주세요.
+예시: 20250425 (2025년 4월 25일)
+"""
+
+    LOGIN_FAILED_RETRY = """❌ 로그인 실패
+
+입력하신 정보:
+━━━━━━━━━━━━━━
+아이디: {username}
+비밀번호: 보안상 비공개
+━━━━━━━━━━━━━━
+
+다음 중 하나를 선택해주세요:
+  • Y 또는 예 → 계정정보 다시 입력
+  • N 또는 아니오 → 작업 취소
+  • 비밀번호만 다시 입력 → 같은 아이디로 재시도
+
+⚠️ 주의: 5회 이상 로그인 실패 시 코레일 홈페이지에서 비밀번호를 재설정해야 합니다.
+"""
+
+    # ========== 예약 정보 입력 메시지 ==========
+    REQUEST_DATE = """✅ 출발일 입력 완료
+
+🚉 출발역을 입력해주세요.
+예시: 광명, 서울, 부산 등
+
+💡 역 이름만 입력 ('역' 제외)
+📍 역 목록: http://www.letskorail.com/ebizprd/stationKtxList.do
+"""
+
+    REQUEST_SRC_STATION = """✅ 출발역 입력 완료
+
+🏁 도착역을 입력해주세요.
+예시: 광주송정, 대전, 동대구 등
+
+💡 역 이름만 입력 ('역' 제외)
+📍 역 목록: http://www.letskorail.com/ebizprd/stationKtxList.do
+"""
+
+    REQUEST_DST_STATION = """✅ 도착역 입력 완료
+
+🕐 검색 시작 시각을 입력해주세요.
+
+형식: HHMM (24시간 기준, 4자리)
+예시: 1305 (오후 1시 5분 이후 열차 검색)
+"""
+
+    REQUEST_DEP_TIME = """✅ 검색 시작 시각 입력 완료
+
+🕐 검색 종료 시각을 입력해주세요.
+
+형식: HHMM (24시간 기준, 4자리)
+예시: 1800 (오후 6시까지의 열차만 검색)
+
+💡 시간 제한 없이 검색하려면 2400 입력 (권장)
+"""
+
+    REQUEST_TRAIN_TYPE = """✅ 시간 입력 완료
+
+🚄 열차 종류를 선택해주세요.
+
+1️⃣ KTX / KTX-산천만 예약
+2️⃣ 모든 열차 포함
+
+숫자를 입력하세요: 1 또는 2
+"""
+
+    REQUEST_SEAT_TYPE = """✅ 열차 종류 선택 완료
+
+💺 좌석 종류를 선택해주세요.
+
+1️⃣ 일반실 우선
+2️⃣ 일반실만
+3️⃣ 특실 우선
+4️⃣ 특실만
+
+숫자를 입력하세요: 1, 2, 3, 4
+"""
+
+    CONFIRM_RESERVATION = """✅ 모든 정보 입력 완료!
+
+📋 예약 정보 확인
+━━━━━━━━━━━━━━━━━━━━
+📅 출발일: {depDate}
+🚉 출발역: {srcLocate}
+🏁 도착역: {dstLocate}
+🕐 검색 시작: {depTime}
+⏰ 검색 종료: {maxDepTime}
+🚄 열차: {trainTypeShow}
+💺 좌석: {specialInfoShow}
+━━━━━━━━━━━━━━━━━━━━
+
+• Y 또는 예 → 예약 시작
+• N 또는 아니오 → 작업 취소
+
+⏱ 예약 완료까지 시간이 걸릴 수 있습니다.
+"""
+
+    RESERVATION_STARTED = """🎯 예약 검색을 시작합니다!
+
+🔍 매진된 자리에 공석이 생길 때까지 계속 확인합니다.
+✅ 예약 성공 시 즉시 알려드립니다!
+
+💡 진행 중인 예약을 취소하려면 /cancel을 입력하세요.
+"""
+
+    ALREADY_RUNNING = """⚠️ 이미 예약이 진행 중입니다.
+
+📋 진행 중인 예약 정보
+━━━━━━━━━━━━━━━━━━━━
+📅 출발일: {depDate}
+🚉 출발역: {srcLocate}
+🏁 도착역: {dstLocate}
+🕐 검색 시작: {depTime}
+🚄 열차: {trainTypeShow}
+💺 좌석: {specialInfoShow}
+━━━━━━━━━━━━━━━━━━━━
+
+💡 예약을 취소하려면 /cancel을 입력하세요.
+"""
+
+    # ========== 에러 메시지 ==========
+    ERROR_GENERIC = "⚠️ 오류가 발생했습니다.\n/cancel 또는 /start로 다시 시작해주세요."
+    ERROR_INVALID_COMMAND = "❌ 알 수 없는 명령어입니다.\n/help로 사용 가능한 명령어를 확인하세요."
+    ERROR_NO_PROGRESS = "ℹ️ 진행 중인 예약이 없습니다.\n/start를 입력하여 예약을 시작하세요."
+    ERROR_PHONE_FORMAT = "❌ 전화번호 형식이 올바르지 않습니다.\n하이픈(-)을 포함하여 다시 입력해주세요.\n예시: 010-1234-5678"
+    ERROR_DATE_FORMAT = """❌ 날짜 형식이 올바르지 않습니다.
+
+8자리 숫자로 입력해주세요.
+예시: 20250425 (2025년 4월 25일)
+
+⚠️ 과거 날짜는 입력할 수 없습니다.
+"""
+    ERROR_TIME_FORMAT = "❌ 시간 형식이 올바르지 않습니다.\nHHMM 형식 4자리로 입력해주세요.\n예시: 1430 (오후 2시 30분)"
+    ERROR_TRAIN_TYPE_INVALID = "❌ 1 또는 2를 입력해주세요."
+    ERROR_SEAT_TYPE_INVALID = "❌ 1, 2, 3, 4 중 하나를 입력해주세요."
+    ERROR_CONFIRM_INVALID = """❌ 올바른 응답을 입력해주세요.
+
+• Y 또는 예 → 예약 시작
+• N 또는 아니오 → 작업 취소
+"""
+    ERROR_ADMIN_ENV = "⚠️ 서버 환경변수가 설정되지 않았습니다."
+    ERROR_ADMIN_LOGIN = "⚠️ 관리자 계정 로그인에 실패했습니다."
+    ERROR_NOT_SUBSCRIBER = """⚠️ 구독이 필요한 서비스입니다.
+
+2024년부터 본 서비스가 유료화되었습니다.
+구독을 원하시면 텔레그램 @dubidum으로 문의해주세요.
+
+예약을 취소합니다.
+"""
+    ERROR_BUSY = "⏳ 현재 다른 사용자가 이용 중입니다.\n잠시 후 다시 시도하거나 관리자에게 문의하세요."
+
+    # ========== 취소 및 완료 메시지 ==========
+    CANCELLED = "✅ 예약이 취소되었습니다."
+    CANCELLED_BY_USER = "🚫 예약을 취소합니다."
+    CANCELLED_TYPO = "✅ 예약이 취소되었습니다."
+
+    PAYMENT_CONFIRMED = """✅ 결제 완료 확인!
+
+리마인더 알림이 중단됩니다.
+즐거운 여행 되세요! 🚄
+"""
+
+    # ========== 구독 관련 메시지 ==========
+    SUBSCRIBE_SUCCESS = "🔔 알림 구독이 완료되었습니다."
+    SUBSCRIBE_ALREADY = "ℹ️ 이미 알림을 구독 중입니다."
+
+    # ========== 관리자 메시지 ==========
+    ADMIN_FORCE_CANCEL = "⚠️ 관리자에 의해 예약이 강제 종료되었습니다.\n문의사항은 관리자에게 연락하세요."
+    ADMIN_BROADCAST_DEFAULT = "📢 테스트 메시지입니다."
+    ADMIN_AUTH_REQUIRED = "🔐 관리자 인증이 필요합니다.\n관리자 비밀번호를 입력해주세요."
+    ADMIN_AUTH_SUCCESS = "✅ 관리자 인증 성공!"
+    ADMIN_AUTH_FAILED = "❌ 관리자 인증 실패\n올바른 비밀번호를 입력해주세요."
+
+    @staticmethod
+    def status_info(count, users):
+        """예약 상태 정보"""
+        if count == 0:
+            return "ℹ️ 현재 진행 중인 예약이 없습니다."
+        return f"📊 현재 {count}개의 예약이 진행 중입니다.\n👥 이용 중인 사용자: {users}"
+
+    @staticmethod
+    def all_users_info(count, users):
+        """전체 유저 정보"""
+        return f"👥 전체 사용자: {count}명\n📋 목록: {users}"
+
+    @staticmethod
+    def admin_cancelled_all(count, users):
+        """전체 예약 취소 (관리자용)"""
+        return f"🛑 전체 예약 종료 완료\n\n종료된 예약: {count}개\n영향받은 사용자: {users}"
+
+    @staticmethod
+    def subscriber_not_allowed(phone):
+        """구독자 목록에 없음 (관리자 알림용)"""
+        return f"⚠️ 미등록 사용자 접근 시도\n전화번호: {phone}"
+
+    @staticmethod
+    def subscriber_started(username, src, dst, date):
+        """예약 시작 (구독자 알림용)"""
+        return f"🎯 새로운 예약 시작\n\n사용자: {username}\n구간: {src} → {dst}\n날짜: {date}"
+
+    @staticmethod
+    def subscriber_ended(username):
+        """예약 종료 (구독자 알림용)"""
+        return f"✅ 예약 종료\n사용자: {username}"
+
+
+class MessageService:
+    """메시지 전송 서비스"""
+
+    def __init__(self, session, send_url):
+        """
+        Args:
+            session: requests.session() 객체
+            send_url: 텔레그램 API URL
+        """
+        self.session = session
+        self.send_url = send_url
+
+    def send(self, chat_id, message):
+        """
+        메시지 전송
+
+        Args:
+            chat_id: 채팅 ID
+            message: 전송할 메시지 (str 또는 템플릿 메서드)
+        """
+        url = f"{self.send_url}/sendMessage"
+        params = {
+            "chat_id": chat_id,
+            "text": message
+        }
+        self.session.get(url, params=params)
+
+    def send_to_multiple(self, chat_ids, message):
+        """
+        여러 사용자에게 메시지 전송
+
+        Args:
+            chat_ids: 채팅 ID 리스트
+            message: 전송할 메시지
+        """
+        for chat_id in chat_ids:
+            self.send(chat_id, message)
