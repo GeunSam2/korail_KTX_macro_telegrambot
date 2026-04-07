@@ -13,6 +13,7 @@ pyopenssl = "*"
 korail2 = {git = "https://github.com/dhfhfk/korail2.git", ref = "bypassDynapath"}
 
 [dev-packages]
+pytest = "*"
 
 [requires]
 python_version = "3.9"

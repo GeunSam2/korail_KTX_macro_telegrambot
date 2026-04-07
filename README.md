@@ -81,6 +81,9 @@ python src/app.py
 - `make install` - 의존성 설치
 - `make run` - 애플리케이션 실행
 - `make shell` - pipenv shell 진입
+- `make test` - 전체 테스트 실행
+- `make test-api` - API 엔드포인트 테스트만 실행
+- `make test-logic` - Korail 로직 테스트만 실행
 - `make requirements` - requirements.txt 생성
 
 ### Docker 배포
@@ -119,6 +122,32 @@ docker run -dit \
 | `USERPW` | ❌ | 관리자 편의 로그인용 코레일 비밀번호 |
 
 ## 개발 워크플로우
+
+### 테스트 실행
+
+```bash
+# 전체 테스트 실행
+make test
+
+# API 엔드포인트 테스트만 실행
+make test-api
+
+# Korail 로직 테스트만 실행
+make test-logic
+```
+
+**테스트 구성:**
+- `tests/test_api.py` - Flask API 엔드포인트 테스트
+  - `/telebot` 엔드포인트 존재 확인
+  - `/check_payment` 엔드포인트 존재 확인
+  - CORS 헤더 확인
+  - 404 에러 처리 확인
+
+- `tests/test_korail_logic.py` - Korail 예약 로직 테스트
+  - korail2 라이브러리 import 확인
+  - 필수 클래스 (Korail, TrainType, ReserveOption) 확인
+  - Flask 및 Telegram Bot 의존성 확인
+  - 결제 리마인더 시간 설정 (10분, 10초 간격) 확인
 
 ### 의존성 추가 시
 ```bash

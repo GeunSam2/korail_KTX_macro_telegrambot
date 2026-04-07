@@ -25,6 +25,18 @@ requirements:	## Generate requirements.txt from Pipfile.lock (for Docker)
 	pipenv requirements > requirements.txt
 	echo "uwsgi==2.0.31" >> requirements.txt
 
+.PHONY: test
+test:			## Run all tests with pytest
+	pipenv run pytest tests/ -v
+
+.PHONY: test-api
+test-api:		## Run API endpoint tests only
+	pipenv run pytest tests/test_api.py -v
+
+.PHONY: test-logic
+test-logic:		## Run Korail logic tests only
+	pipenv run pytest tests/test_korail_logic.py -v
+
 .PHONY: build
 build:			## Build Docker Image
 	docker build -t ${IMAGE_NAME} .
