@@ -60,7 +60,13 @@ class BackgroundReservationProcess:
 
     def _parse_train_type(self, train_type_str: str) -> TrainType:
         """Parse train type from string."""
-        if "KTX" in train_type_str.upper() and "ALL" not in train_type_str.upper():
+        # Check for exact string representation of enum
+        if "TrainType.KTX" in train_type_str:
+            return TrainType.KTX
+        elif "TrainType.ALL" in train_type_str:
+            return TrainType.ALL
+        # Fallback to checking for keywords
+        elif "KTX" in train_type_str.upper() and "ALL" not in train_type_str.upper():
             return TrainType.KTX
         else:
             return TrainType.ALL
