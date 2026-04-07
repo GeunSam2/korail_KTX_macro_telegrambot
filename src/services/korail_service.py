@@ -21,6 +21,9 @@ class KorailService:
         self._logged_in = False
         self._search_interval = settings.KORAIL_SEARCH_INTERVAL
 
+        # Log class methods to verify correct version is loaded
+        logger.info(f"KorailService initialized with methods: {[m for m in dir(self) if not m.startswith('_')]}")
+
     def login(self, username: str, password: str) -> bool:
         """
         Login to Korail with credentials.
