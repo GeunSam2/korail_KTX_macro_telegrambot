@@ -165,11 +165,6 @@ class KorailService:
 
             return None
 
-
-class DuplicateReservationError(Exception):
-    """Raised when attempting to reserve a train that's already reserved."""
-    pass
-
     def search_and_reserve_loop(
         self,
         dep_date: str,
@@ -376,3 +371,8 @@ class DuplicateReservationError(Exception):
     def is_logged_in(self) -> bool:
         """Check if currently logged in."""
         return self._logged_in
+
+
+class DuplicateReservationError(Exception):
+    """Raised when attempting to reserve a train that's already reserved."""
+    pass
