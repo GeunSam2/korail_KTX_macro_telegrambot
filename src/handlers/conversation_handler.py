@@ -296,10 +296,10 @@ class ConversationHandler:
             return
 
         if text == "1":
-            session.train_info['trainType'] = str(TrainType.KTX)
+            session.train_info['trainType'] = "TrainType.KTX"
             session.train_info['trainTypeShow'] = "KTX"
         else:
-            session.train_info['trainType'] = str(TrainType.ALL)
+            session.train_info['trainType'] = "TrainType.ALL"
             session.train_info['trainTypeShow'] = "ALL"
 
         session.last_action = UserProgress.TRAIN_TYPE_INPUT_SUCCESS

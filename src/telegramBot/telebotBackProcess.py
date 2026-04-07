@@ -70,6 +70,11 @@ class BackgroundReservationProcess:
             return TrainType.KTX
         elif "TrainType.ALL" in train_type_str:
             return TrainType.ALL
+        # Check for numeric values (backward compatibility)
+        elif train_type_str == "100":  # KTX value
+            return TrainType.KTX
+        elif train_type_str == "0":  # ALL value
+            return TrainType.ALL
         # Fallback to checking for keywords
         elif "KTX" in train_type_str.upper() and "ALL" not in train_type_str.upper():
             return TrainType.KTX
