@@ -315,19 +315,19 @@ class Messages:
 
     @staticmethod
     def request_departure_station():
-        """Request departure station (compatibility method)"""
-        return Messages.REQUEST_SRC_STATION
+        """Request departure station after date input (compatibility method)"""
+        return Messages.REQUEST_DATE
 
     @staticmethod
     def request_arrival_station():
-        """Request arrival station (compatibility method)"""
-        return Messages.REQUEST_DST_STATION
+        """Request arrival station after departure station input (compatibility method)"""
+        return Messages.REQUEST_SRC_STATION
 
     @staticmethod
     def request_departure_date():
         """Request departure date (deprecated - use request_departure_station)"""
         # This method name is misleading but kept for backward compatibility
-        return Messages.REQUEST_SRC_STATION
+        return Messages.REQUEST_DATE
 
     @staticmethod
     def not_in_allow_list():
