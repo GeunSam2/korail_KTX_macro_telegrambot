@@ -154,13 +154,22 @@ class TelegramWebhook(Resource):
             chat_id = request.args.get('chatId')
             msg = request.args.get('msg')
             status = request.args.get('status')
+            is_multi = request.args.get('isMulti', '0')
+            total_seats = request.args.get('totalSeats', '1')
+            seat_strategy = request.args.get('seatStrategy', 'consecutive')
 
             if not all([chat_id, msg, status]):
                 logger.warning("Incomplete callback parameters")
                 return make_response("OK")
 
             chat_id = int(chat_id)
-            logger.info(f"Callback from background process: chat_id={chat_id}, status={status}")
+            is_multi = (is_multi == '1')
+            total_seats = int(total_seats)
+
+            logger.info(
+                f"Callback from background process: chat_id={chat_id}, status={status}, "
+                f"is_multi={is_multi}, total_seats={total_seats}, seat_strategy={seat_strategy}"
+            )
 
             # Send message to user
             self.telegram.send_message(chat_id, msg)
@@ -175,13 +184,16 @@ class TelegramWebhook(Resource):
                     session.reset()
                     self.storage.save_user_session(session)
 
-                # Initialize payment reminder
-                payment_status = PaymentStatus(
-                    chat_id=chat_id,
-                    completed=False,
-                    reminder_active=True
-                )
-                self.storage.save_payment_status(payment_status)
+                # Start appropriate payment reminders
+                if is_multi:
+                    logger.info(f"Starting multi-reservation reminders for chat_id={chat_id}")
+                    # Note: We can't create full MultiReservationStatus here because we don't have
+                    # the actual reservation objects. For now, just start single payment reminder.
+                    # TODO: Need to pass reservation details through callback or use shared storage (Redis)
+                    self.payment_reminder.start_reminders(chat_id)
+                else:
+                    logger.info(f"Starting single payment reminders for chat_id={chat_id}")
+                    self.payment_reminder.start_reminders(chat_id)
 
                 # Clean up running reservation
                 self.storage.delete_running_reservation(chat_id)

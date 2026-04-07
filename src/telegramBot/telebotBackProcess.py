@@ -185,15 +185,17 @@ class BackgroundReservationProcess:
 🔗 결제 링크: {settings.KORAIL_PAYMENT_URL}
 """
 
-                self._send_callback(message, status=0)
+                # Send callback with reservation metadata
+                self._send_callback(
+                    message,
+                    status=0,
+                    is_multi=is_random and total_seats > 1,
+                    total_seats=total_seats,
+                    seat_strategy=self.seat_strategy
+                )
 
-                # Start appropriate payment reminders
-                if is_random and total_seats > 1:
-                    logger.info(f"Starting multi-reservation reminders for chat_id={self.chat_id}")
-                    self.multi_reminder.start_reminders(int(self.chat_id))
-                else:
-                    logger.info(f"Starting single payment reminders for chat_id={self.chat_id}")
-                    self.payment_reminder.start_reminders(int(self.chat_id))
+                # Note: Payment reminders will be started by main app after receiving callback
+                # (subprocess and main app don't share memory, so reminders must start in main app)
 
             else:
                 logger.warning("Reservation failed - no result")
@@ -259,25 +261,32 @@ class BackgroundReservationProcess:
         except Exception as e:
             logger.error(f"Failed to create MultiReservationStatus: {e}", exc_info=True)
 
-    def _send_callback(self, message: str, status: int = 0):
+    def _send_callback(self, message: str, status: int = 0, is_multi: bool = False,
+                       total_seats: int = 1, seat_strategy: str = "consecutive"):
         """
         Send callback to main app.
 
         Args:
             message: Message to send to user
             status: 0 for success/completion, 1 for error
+            is_multi: True if multi-reservation (random allocation with multiple seats)
+            total_seats: Total number of seats reserved
+            seat_strategy: Seat allocation strategy used
         """
         try:
             callback_url = f"{settings.CALLBACK_BASE_URL}/telebot"
             params = {
                 "chatId": self.chat_id,
                 "msg": message,
-                "status": status
+                "status": status,
+                "isMulti": "1" if is_multi else "0",
+                "totalSeats": str(total_seats),
+                "seatStrategy": seat_strategy
             }
 
             session = requests.session()
             response = session.get(callback_url, params=params, verify=False, timeout=10)
-            logger.debug(f"Callback sent: status={status}, response={response.status_code}")
+            logger.debug(f"Callback sent: status={status}, is_multi={is_multi}, response={response.status_code}")
 
         except Exception as e:
             logger.error(f"Failed to send callback: {e}")
