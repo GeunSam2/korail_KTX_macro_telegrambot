@@ -151,8 +151,21 @@ class KorailService:
             logger.debug(f"Train sold out during reservation attempt: {train}")
             return None
         except Exception as e:
-            logger.error(f"Error reserving train: {e}")
+            error_msg = str(e)
+            logger.error(f"Error reserving train: {error_msg}")
+
+            # Check for duplicate reservation error
+            if "동일한 예약 내역" in error_msg or "WRR800029" in error_msg:
+                # This means reservation already exists - should stop the loop
+                logger.warning("Duplicate reservation detected - raising exception to stop loop")
+                raise DuplicateReservationError(error_msg)
+
             return None
+
+
+class DuplicateReservationError(Exception):
+    """Raised when attempting to reserve a train that's already reserved."""
+    pass
 
     def search_and_reserve_loop(
         self,

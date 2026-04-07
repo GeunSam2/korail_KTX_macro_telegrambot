@@ -16,6 +16,7 @@ sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 from config.settings import settings
 from storage import InMemoryStorage
 from services import KorailService, TelegramService, PaymentReminderService, MultiReservationReminderService
+from services.korail_service import DuplicateReservationError
 from models import MultiReservationStatus, SingleReservationInfo, ReservationPaymentStatus
 from utils.logger import get_logger
 
@@ -123,17 +124,31 @@ class BackgroundReservationProcess:
             logger.info("Login successful, starting reservation loop...")
 
             # Search and reserve
-            reservation = self.korail.search_and_reserve_loop(
-                dep_date=self.dep_date,
-                src_locate=self.src_locate,
-                dst_locate=self.dst_locate,
-                dep_time=self.dep_time,
-                max_dep_time=self.max_dep_time,
-                train_type=self.train_type,
-                reserve_option=self.reserve_option,
-                passenger_count=self.passenger_count,
-                seat_strategy=self.seat_strategy
-            )
+            try:
+                reservation = self.korail.search_and_reserve_loop(
+                    dep_date=self.dep_date,
+                    src_locate=self.src_locate,
+                    dst_locate=self.dst_locate,
+                    dep_time=self.dep_time,
+                    max_dep_time=self.max_dep_time,
+                    train_type=self.train_type,
+                    reserve_option=self.reserve_option,
+                    passenger_count=self.passenger_count,
+                    seat_strategy=self.seat_strategy
+                )
+            except DuplicateReservationError as e:
+                logger.warning(f"Duplicate reservation detected: {e}")
+                message = f"""
+⚠️ 중복 예약 감지
+
+이미 동일한 열차에 대한 예약이 존재합니다.
+
+🔗 기존 예약을 확인하세요: {settings.KORAIL_PAYMENT_URL}
+
+💡 기존 예약을 취소하고 다시 시도하려면 /cancel 명령어를 사용하세요.
+"""
+                self._send_callback(message, status=1)
+                return
 
             if reservation:
                 logger.info(f"Reservation successful: {reservation}")
