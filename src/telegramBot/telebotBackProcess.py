@@ -118,7 +118,22 @@ class BackgroundReservationProcess:
             # Login
             if not self.korail.login(self.username, self.password):
                 logger.error("Login failed")
-                self._send_callback("로그인에 실패했습니다.", status=1)
+                message = f"""
+❌ 코레일 로그인 실패
+
+아이디/비밀번호가 올바르지 않거나 코레일 서버에 문제가 있습니다.
+
+💡 조치 방법:
+1. 코레일 회원번호를 확인하세요
+2. 비밀번호가 올바른지 확인하세요
+3. 코레일 사이트에서 직접 로그인을 시도해보세요
+4. 계정이 잠기지 않았는지 확인하세요
+
+🔗 코레일 로그인: {settings.KORAIL_PAYMENT_URL}
+
+정보 수정이 필요하면 /cancel 후 다시 시작하세요.
+"""
+                self._send_callback(message, status=1)
                 return
 
             logger.info("Login successful, starting reservation loop...")
@@ -146,6 +161,58 @@ class BackgroundReservationProcess:
 🔗 기존 예약을 확인하세요: {settings.KORAIL_PAYMENT_URL}
 
 💡 기존 예약을 취소하고 다시 시도하려면 /cancel 명령어를 사용하세요.
+"""
+                self._send_callback(message, status=1)
+                return
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Network error during reservation: {e}")
+                message = f"""
+🌐 네트워크 오류
+
+코레일 서버와 통신 중 오류가 발생했습니다.
+
+오류 내용: {str(e)}
+
+💡 조치 방법:
+1. 인터넷 연결을 확인하세요
+2. 잠시 후 다시 시도하세요 (/cancel 후 /start)
+3. 코레일 서버가 점검 중일 수 있습니다
+
+🔗 코레일 사이트 상태 확인: {settings.KORAIL_PAYMENT_URL}
+"""
+                self._send_callback(message, status=1)
+                return
+            except ValueError as e:
+                logger.error(f"Invalid data during reservation: {e}")
+                message = f"""
+⚠️ 입력 데이터 오류
+
+입력하신 정보에 문제가 있습니다.
+
+오류 내용: {str(e)}
+
+💡 조치 방법:
+1. 역 이름을 확인하세요 (예: 서울, 부산)
+2. 날짜 형식을 확인하세요 (YYYYMMDD)
+3. 시간 형식을 확인하세요 (HHMMSS)
+4. /cancel 후 정확한 정보로 다시 시도하세요
+"""
+                self._send_callback(message, status=1)
+                return
+            except Exception as e:
+                # Catch any other unexpected errors from the loop
+                logger.error(f"Unexpected error in reservation loop: {e}", exc_info=True)
+                message = f"""
+❌ 예약 검색 중 예상치 못한 오류
+
+오류 유형: {type(e).__name__}
+오류 내용: {str(e)}
+
+💡 조치 방법:
+1. /cancel 후 다시 시도하세요
+2. 문제가 계속되면 관리자에게 문의하세요
+
+로그에 자세한 정보가 기록되었습니다.
 """
                 self._send_callback(message, status=1)
                 return
@@ -179,7 +246,12 @@ class BackgroundReservationProcess:
 """
 
                     # Create MultiReservationStatus for smart reminders
-                    self._create_multi_reservation_status(all_reservations, total_seats)
+                    try:
+                        self._create_multi_reservation_status(all_reservations, total_seats)
+                    except Exception as e:
+                        logger.error(f"Failed to create multi-reservation status: {e}", exc_info=True)
+                        # Non-critical error - reservation succeeded, just reminder setup failed
+                        # Continue with callback
 
                 else:
                     seats_text = f"{self.passenger_count}명" if self.passenger_count > 1 else ""
@@ -223,7 +295,32 @@ class BackgroundReservationProcess:
 
         except Exception as e:
             logger.error(f"Error in reservation process: {e}", exc_info=True)
-            self._send_callback(f"에러발생 : {e}", status=1)
+
+            # Build detailed error message
+            error_type = type(e).__name__
+            error_msg = str(e)
+
+            message = f"""
+❌ 예약 프로세스 오류 발생
+
+오류 유형: {error_type}
+오류 내용: {error_msg}
+
+📋 상황:
+- 출발일: {self.dep_date}
+- 출발역: {self.src_locate}
+- 도착역: {self.dst_locate}
+- 출발시각: {self.dep_time}
+
+💡 조치 방법:
+1. 인터넷 연결 상태를 확인하세요
+2. 코레일 계정 정보가 올바른지 확인하세요
+3. 코레일 사이트가 정상 작동하는지 확인하세요
+4. /cancel 후 다시 시도하세요
+
+🔗 코레일 사이트 확인: {settings.KORAIL_PAYMENT_URL}
+"""
+            self._send_callback(message, status=1)
 
         logger.info(f"Reservation process ended for {self.username}")
 
@@ -301,10 +398,21 @@ class BackgroundReservationProcess:
 
             session = requests.session()
             response = session.get(callback_url, params=params, verify=False, timeout=10)
-            logger.debug(f"Callback sent: status={status}, is_multi={is_multi}, response={response.status_code}")
 
+            if response.status_code == 200:
+                logger.debug(f"Callback sent successfully: status={status}, is_multi={is_multi}")
+            else:
+                logger.warning(
+                    f"Callback returned non-200 status: {response.status_code}, "
+                    f"response={response.text[:200]}"
+                )
+
+        except requests.exceptions.Timeout:
+            logger.error(f"Callback timeout - main app may be down or slow")
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Failed to connect to main app for callback: {e}")
         except Exception as e:
-            logger.error(f"Failed to send callback: {e}")
+            logger.error(f"Unexpected error sending callback: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
