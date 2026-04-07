@@ -18,6 +18,7 @@ class InMemoryStorage(StorageInterface):
         self._running_reservations: Dict[int, RunningReservation] = {}
         self._payment_statuses: Dict[int, PaymentStatus] = {}
         self._subscribers: set[int] = set()
+        self._admin_sessions: set[int] = set()  # Track authenticated admin sessions
 
     # User Session Management
     def get_user_session(self, chat_id: int) -> Optional[UserSession]:
@@ -85,3 +86,15 @@ class InMemoryStorage(StorageInterface):
     def is_subscriber(self, chat_id: int) -> bool:
         """Check if chat ID is a subscriber."""
         return chat_id in self._subscribers
+
+    # Admin Session Management
+    def is_admin_authenticated(self, chat_id: int) -> bool:
+        """Check if chat ID is authenticated as admin."""
+        return chat_id in self._admin_sessions
+
+    def set_admin_authenticated(self, chat_id: int, authenticated: bool = True) -> None:
+        """Set admin authentication status for chat ID."""
+        if authenticated:
+            self._admin_sessions.add(chat_id)
+        else:
+            self._admin_sessions.discard(chat_id)

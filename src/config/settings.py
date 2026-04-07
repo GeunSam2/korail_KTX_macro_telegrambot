@@ -44,6 +44,10 @@ class Settings:
     # Magic Admin Login String
     ADMIN_MAGIC_STRING: str = "근삼이최고"
 
+    # Admin Command Authentication
+    # Uses USERPW environment variable (same as Korail admin password)
+    ADMIN_PASSWORD: Optional[str] = os.environ.get('USERPW')
+
     # Process Management
     RECURSION_LIMIT: int = 10**7
 

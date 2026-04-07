@@ -86,3 +86,14 @@ class StorageInterface(ABC):
     def is_subscriber(self, chat_id: int) -> bool:
         """Check if chat ID is a subscriber."""
         pass
+
+    # Admin Session Management
+    @abstractmethod
+    def is_admin_authenticated(self, chat_id: int) -> bool:
+        """Check if chat ID is authenticated as admin."""
+        pass
+
+    @abstractmethod
+    def set_admin_authenticated(self, chat_id: int, authenticated: bool = True) -> None:
+        """Set admin authentication status for chat ID."""
+        pass

@@ -216,24 +216,65 @@ class CommandHandler:
         command = parts[0].lower()
         args = parts[1] if len(parts) > 1 else ""
 
-        # Route to handler
+        # Public commands
         if command == "/start":
             self.handle_start(chat_id)
         elif command == "/cancel":
             self.handle_cancel(chat_id)
-        elif command == "/subscribe":
-            self.handle_subscribe(chat_id)
         elif command == "/status":
             self.handle_status(chat_id)
-        elif command == "/cancelall":
-            self.handle_cancel_all(chat_id)
-        elif command == "/allusers":
-            self.handle_all_users(chat_id)
-        elif command == "/broadcast":
-            self.handle_broadcast(chat_id, args)
         elif command == "/help":
             self.handle_help(chat_id)
+        # Admin commands - require authentication
+        elif command == "/subscribe":
+            self._handle_admin_command(chat_id, self.handle_subscribe)
+        elif command == "/cancelall":
+            self._handle_admin_command(chat_id, self.handle_cancel_all)
+        elif command == "/allusers":
+            self._handle_admin_command(chat_id, self.handle_all_users)
+        elif command == "/broadcast":
+            self._handle_admin_command(chat_id, lambda cid: self.handle_broadcast(cid, args))
         else:
             self.handle_unknown_command(chat_id, command)
 
         return True
+
+    def _handle_admin_command(self, chat_id: int, handler_func) -> None:
+        """
+        Handle admin command with authentication check.
+
+        Args:
+            chat_id: Telegram chat ID
+            handler_func: Function to call if authenticated
+        """
+        if self.storage.is_admin_authenticated(chat_id):
+            # Already authenticated, execute command
+            handler_func(chat_id)
+        else:
+            # Request password
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.ADMIN_AUTH_REQUIRED)
+            logger.info(f"Admin authentication required for chat_id={chat_id}")
+
+    def handle_admin_password(self, chat_id: int, password: str) -> bool:
+        """
+        Handle admin password input.
+
+        Args:
+            chat_id: Telegram chat ID
+            password: Password attempt
+
+        Returns:
+            True if authenticated successfully
+        """
+        from telegramBot.messages import Messages
+
+        if password == settings.ADMIN_PASSWORD:
+            self.storage.set_admin_authenticated(chat_id, True)
+            self.telegram.send_message(chat_id, Messages.ADMIN_AUTH_SUCCESS)
+            logger.info(f"Admin authenticated: chat_id={chat_id}")
+            return True
+        else:
+            self.telegram.send_message(chat_id, Messages.ADMIN_AUTH_FAILED)
+            logger.warning(f"Admin authentication failed: chat_id={chat_id}")
+            return False

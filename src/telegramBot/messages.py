@@ -285,6 +285,80 @@ class Messages:
         """예약 종료 (구독자 알림용)"""
         return f"✅ 예약 종료\n사용자: {username}"
 
+    # ========== Backward Compatibility Methods for MessageTemplates ==========
+    # These methods provide compatibility with the old MessageTemplates interface
+
+    @staticmethod
+    def welcome_message():
+        """Welcome message (compatibility method)"""
+        return Messages.WELCOME
+
+    @staticmethod
+    def request_phone_number():
+        """Request phone number (compatibility method)"""
+        return Messages.REQUEST_PHONE
+
+    @staticmethod
+    def request_password():
+        """Request password (compatibility method)"""
+        return Messages.REQUEST_PASSWORD
+
+    @staticmethod
+    def login_success():
+        """Login success (compatibility method)"""
+        return Messages.LOGIN_SUCCESS
+
+    @staticmethod
+    def login_failure(username: str):
+        """Login failure (compatibility method)"""
+        return Messages.LOGIN_FAILED_RETRY.format(username=username)
+
+    @staticmethod
+    def request_departure_date():
+        """Request departure date (compatibility method)"""
+        return Messages.REQUEST_SRC_STATION
+
+    @staticmethod
+    def request_arrival_station():
+        """Request arrival station (compatibility method)"""
+        return Messages.REQUEST_DST_STATION
+
+    @staticmethod
+    def not_in_allow_list():
+        """Not in allow list (compatibility method)"""
+        return Messages.ERROR_NOT_SUBSCRIBER
+
+    @staticmethod
+    def reservation_started():
+        """Reservation started (compatibility method)"""
+        return Messages.RESERVATION_STARTED
+
+    @staticmethod
+    def reservation_cancelled():
+        """Reservation cancelled (compatibility method)"""
+        return Messages.CANCELLED
+
+    @staticmethod
+    def help_message():
+        """Help message (compatibility method)"""
+        return Messages.HELP
+
+    @staticmethod
+    def payment_reminder(remaining_minutes: int, remaining_seconds: int):
+        """Payment reminder (compatibility method)"""
+        if remaining_seconds == 0:
+            time_text = f"{remaining_minutes}분"
+        else:
+            time_text = f"{remaining_minutes}분 {remaining_seconds}초"
+
+        return f"""⏰ 결제 리마인더
+
+예약 취소까지 남은 시간: {time_text}
+
+서둘러 결제를 완료해주세요!
+💡 결제 완료 후 아무 메시지나 입력하면 알림이 중단됩니다.
+"""
+
 
 class MessageService:
     """메시지 전송 서비스"""
