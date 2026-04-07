@@ -155,6 +155,8 @@ class Messages:
 ⏰ 검색 종료: {maxDepTime}
 🚄 열차: {trainTypeShow}
 💺 좌석: {specialInfoShow}
+👥 인원: {passengerCount}명
+🪑 배치: {seatStrategy}
 ━━━━━━━━━━━━━━━━━━━━
 
 • Y 또는 예 → 예약 시작

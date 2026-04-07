@@ -420,25 +420,18 @@ class ConversationHandler:
         passenger_count = session.train_info.get('passengerCount', 1)
         seat_strategy_display = session.train_info.get('seatStrategyShow', '1명')
 
-        summary = f"""
-모든 정보 입력이 완료되었습니다.
-정보를 확인하십시오.
-===================
-출발일 : {session.train_info['depDate']}
-출발역 : {session.train_info['srcLocate']}
-도착역 : {session.train_info['dstLocate']}
-검색기준시각 : {session.train_info['depTime'][:4]}
-검색최대시각 : {session.train_info['maxDepTime']}
-열차타입 : {session.train_info['trainTypeShow']}
-특실여부 : {session.train_info['specialInfoShow']}
-탑승인원 : {passenger_count}명
-좌석배치 : {seat_strategy_display}
-===================
-
-'Y'또는 '예'를 입력하시면 예약을 시작합니다.
-'N'또는 '아니오'를 입력하시면 작업을 취소합니다.
-예약 완료에 오랜 시간이 걸릴 수 있습니다.
-"""
+        from telegramBot.messages import Messages
+        summary = Messages.CONFIRM_RESERVATION.format(
+            depDate=session.train_info['depDate'],
+            srcLocate=session.train_info['srcLocate'],
+            dstLocate=session.train_info['dstLocate'],
+            depTime=session.train_info['depTime'][:4],
+            maxDepTime=session.train_info['maxDepTime'],
+            trainTypeShow=session.train_info['trainTypeShow'],
+            specialInfoShow=session.train_info['specialInfoShow'],
+            passengerCount=passenger_count,
+            seatStrategy=seat_strategy_display
+        )
         self.telegram.send_message(chat_id, summary)
 
     def _handle_final_confirmation(self, chat_id: int, text: str, session: UserSession) -> None:
@@ -451,14 +444,11 @@ class ConversationHandler:
         elif is_yes is False:
             session.reset()
             self.storage.save_user_session(session)
-            self.telegram.send_message(chat_id, "예약 작업이 취소되었습니다.")
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.CANCELLED_BY_USER)
         else:
-            message = """
-입력하신 값이 선택지에 없습니다.
-'Y'또는 '예'를 입력하시면 예약을 시작합니다.
-'N'또는 '아니오'를 입력하시면 작업을 취소합니다.
-"""
-            self.telegram.send_message(chat_id, message)
+            from telegramBot.messages import Messages
+            self.telegram.send_message(chat_id, Messages.ERROR_CONFIRM_INVALID)
 
     def _start_reservation(self, chat_id: int, session: UserSession) -> None:
         """Start the reservation background process."""
@@ -501,17 +491,13 @@ class ConversationHandler:
     def _handle_already_processing(self, chat_id: int, session: UserSession) -> None:
         """Handle message when reservation is already in progress."""
         info = session.train_info
-        message = f"""
-현재 예매가 이미 진행중입니다.
-===================
-출발일 : {info.get('depDate', 'N/A')}
-출발역 : {info.get('srcLocate', 'N/A')}
-도착역 : {info.get('dstLocate', 'N/A')}
-검색기준시각 : {info.get('depTime', 'N/A')[:4]}
-열차타입 : {info.get('trainTypeShow', 'N/A')}
-특실여부 : {info.get('specialInfoShow', 'N/A')}
-===================
-
-진행중인 예매를 취소하고 싶으시면 /cancel 을 입력해주세요.
-"""
+        from telegramBot.messages import Messages
+        message = Messages.ALREADY_RUNNING.format(
+            depDate=info.get('depDate', 'N/A'),
+            srcLocate=info.get('srcLocate', 'N/A'),
+            dstLocate=info.get('dstLocate', 'N/A'),
+            depTime=info.get('depTime', 'N/A')[:4] if info.get('depTime') else 'N/A',
+            trainTypeShow=info.get('trainTypeShow', 'N/A'),
+            specialInfoShow=info.get('specialInfoShow', 'N/A')
+        )
         self.telegram.send_message(chat_id, message)
