@@ -1,4 +1,9 @@
-# Legacy imports removed - use new architecture instead:
-# - Use services.KorailService instead of Korail
-# - Use api.TelegramWebhook instead of Index
-# - Use api.PaymentCheckAPI instead of CheckPayment
+"""
+Telegram bot utilities.
+
+This package contains:
+- telebotBackProcess: Background process for train reservation
+- messages: Centralized message templates for bot responses
+"""
+
+__all__ = ['messages']

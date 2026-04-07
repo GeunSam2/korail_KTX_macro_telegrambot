@@ -5,4 +5,9 @@ certs_real/*
 botToken.py
 .env
 .envrc
-.mise.local.toml__pycache__/
+.mise.local.toml
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
