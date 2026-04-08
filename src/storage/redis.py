@@ -391,9 +391,10 @@ class RedisStorage(StorageInterface):
             "in_progress": session.in_progress,
             "last_action": session.last_action,
             "process_id": session.process_id,
+            "train_info": session.train_info,
             "credentials": {
                 "korail_id": session.credentials.korail_id,
-                "korail_password": session.credentials.korail_password
+                "korail_pw": session.credentials.korail_pw
             } if session.credentials else None,
             "search_params": {
                 "dep_date": session.search_params.dep_date,
@@ -402,7 +403,9 @@ class RedisStorage(StorageInterface):
                 "dep_time": session.search_params.dep_time,
                 "max_dep_time": session.search_params.max_dep_time,
                 "train_type": session.search_params.train_type,
+                "train_type_display": session.search_params.train_type_display,
                 "special_option": session.search_params.special_option,
+                "special_option_display": session.search_params.special_option_display,
                 "passenger_count": session.search_params.passenger_count,
                 "seat_strategy": session.search_params.seat_strategy
             } if session.search_params else None
@@ -415,7 +418,7 @@ class RedisStorage(StorageInterface):
             c = data["credentials"]
             credentials = UserCredentials(
                 korail_id=c["korail_id"],
-                korail_password=c["korail_password"]
+                korail_pw=c["korail_pw"]
             )
 
         search_params = None
@@ -428,7 +431,9 @@ class RedisStorage(StorageInterface):
                 dep_time=p["dep_time"],
                 max_dep_time=p["max_dep_time"],
                 train_type=p["train_type"],
+                train_type_display=p["train_type_display"],
                 special_option=p["special_option"],
+                special_option_display=p["special_option_display"],
                 passenger_count=p["passenger_count"],
                 seat_strategy=p["seat_strategy"]
             )
@@ -437,7 +442,8 @@ class RedisStorage(StorageInterface):
             chat_id=data["chat_id"],
             in_progress=data["in_progress"],
             last_action=data["last_action"],
-            process_id=data.get("process_id"),
+            process_id=data.get("process_id", 9999999),
+            train_info=data.get("train_info", {}),
             credentials=credentials,
             search_params=search_params
         )
