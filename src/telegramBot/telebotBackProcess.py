@@ -371,9 +371,62 @@ class BackgroundReservationProcess:
 
         logger.info(f"Reservation process ended for {self.username}")
 
+    def _update_multi_reservation_status(self, seat_index: int, reservation, total_seats: int) -> None:
+        """
+        Create or update MultiReservationStatus for tracking individual seat payment.
+
+        Called after each seat is reserved in random allocation mode.
+
+        Args:
+            seat_index: Index of the seat just reserved (0-based)
+            reservation: Reservation object from korail2
+            total_seats: Total number of seats being reserved
+        """
+        try:
+            now = datetime.now()
+            expires_at = now + timedelta(minutes=settings.PAYMENT_TIMEOUT_MINUTES)
+
+            # Get existing status or create new
+            multi_status = self.storage.get_multi_reservation_status(self.chat_id)
+
+            if not multi_status:
+                # First seat - create new MultiReservationStatus
+                logger.info(f"Creating new MultiReservationStatus for chat_id={self.chat_id}")
+                multi_status = MultiReservationStatus(
+                    chat_id=int(self.chat_id),
+                    reservations=[],
+                    total_seats=total_seats,
+                    seat_strategy=self.seat_strategy,
+                    created_at=now,
+                    manually_stopped=False
+                )
+
+            # Add this reservation
+            rsv_id = getattr(reservation, 'rsv_id', f"seat_{seat_index + 1}")
+            info = SingleReservationInfo(
+                reservation_id=rsv_id,
+                reservation_obj=reservation,
+                reserved_at=now,
+                expires_at=expires_at,
+                status=ReservationPaymentStatus.PENDING,
+                seat_number=seat_index + 1,
+                train_info=str(reservation)
+            )
+            multi_status.reservations.append(info)
+
+            # Save to storage
+            self.storage.save_multi_reservation_status(multi_status)
+            logger.info(
+                f"Updated MultiReservationStatus: {len(multi_status.reservations)}/{total_seats} seats"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to update MultiReservationStatus: {e}", exc_info=True)
+
     def _create_multi_reservation_status(self, all_reservations: list, total_seats: int) -> None:
         """
         Create MultiReservationStatus for tracking individual seat payment.
+        (Legacy method - kept for compatibility)
 
         Args:
             all_reservations: List of reservation objects from korail2
@@ -506,6 +559,9 @@ class BackgroundReservationProcess:
             }
             self.storage.save_partial_reservation(self.chat_id, seat_index, reservation_data)
             logger.info(f"✅ Seat {seat_index + 1} reserved and saved to Redis")
+
+            # Create or update MultiReservationStatus for reminder service
+            self._update_multi_reservation_status(seat_index, reservation, total_seats)
 
             # NOW set current seat index for payment waiting
             # This prevents "결제 대기중" message before reservation succeeds
