@@ -528,7 +528,7 @@ class RedisStorage(StorageInterface):
                     "reservation_id": r.reservation_id,
                     "reserved_at": r.reserved_at.isoformat(),
                     "expires_at": r.expires_at.isoformat(),
-                    "status": r.status,
+                    "status": r.status.value if hasattr(r.status, 'value') else r.status,
                     "seat_number": r.seat_number,
                     "train_info": r.train_info
                 } for r in status.reservations
@@ -550,7 +550,7 @@ class RedisStorage(StorageInterface):
                 reservation_obj=None,  # Can't serialize actual reservation object
                 reserved_at=datetime.fromisoformat(r["reserved_at"]),
                 expires_at=datetime.fromisoformat(r["expires_at"]),
-                status=r["status"],
+                status=ReservationPaymentStatus(r["status"]) if isinstance(r["status"], str) else r["status"],
                 seat_number=r["seat_number"],
                 train_info=r["train_info"]
             ) for r in data["reservations"]
