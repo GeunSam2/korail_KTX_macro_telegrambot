@@ -16,6 +16,10 @@ hiredis = "*"
 
 [dev-packages]
 pytest = "*"
+pytest-cov = "*"
+pytest-mock = "*"
+pytest-asyncio = "*"
+freezegun = "*"
 testcontainers = {extras = ["redis"], version = "*"}
 
 [requires]

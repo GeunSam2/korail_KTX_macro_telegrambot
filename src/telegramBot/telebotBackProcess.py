@@ -6,6 +6,7 @@ and attempt to reserve trains. It has been refactored to use the new
 service architecture while maintaining backward compatibility.
 """
 import sys
+import time
 import requests
 from datetime import datetime, timedelta
 from korail2 import TrainType, ReserveOption
