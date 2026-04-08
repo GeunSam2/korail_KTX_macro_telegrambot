@@ -1,6 +1,9 @@
 """User data models."""
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.reservation import TrainSearchParams
 
 
 @dataclass
@@ -19,6 +22,7 @@ class UserSession:
     credentials: Optional[UserCredentials] = None
     train_info: dict = field(default_factory=dict)
     process_id: int = 9999999  # PID of background reservation process
+    search_params: Optional['TrainSearchParams'] = None  # Search parameters for train reservation
 
     def reset(self) -> None:
         """Reset user session to initial state."""
@@ -26,6 +30,7 @@ class UserSession:
         self.last_action = 0
         self.train_info = {}
         self.process_id = 9999999
+        self.search_params = None
 
 
 @dataclass
