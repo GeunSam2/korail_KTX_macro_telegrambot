@@ -43,6 +43,8 @@ class Messages:
   /cancelall - 전체 예약 취소
   /broadcast [메시지] - 공지사항 전송
   /flushredis - Redis 메모리 초기화 (⚠️ 위험)
+  /debug_on - 상세 디버그 로그 활성화
+  /debug_off - 디버그 로그 비활성화
 
 💡 결제 알림은 예약 성공 후 아무 메시지나 입력하면 중단됩니다.
 """
