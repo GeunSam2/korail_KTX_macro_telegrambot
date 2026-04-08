@@ -35,24 +35,38 @@ jobs:
             cache-to: type=gha,mode=max
 
     -
-        name: SSH Remote Commands
+        name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.2.0
         with:
             host: server.geunsam2.xyz
             username: ${{ secrets.SSH_USERNAME }}
             password: ${{ secrets.SSH_PASSWORD }}
             port: 22
-            timeout: 40s  # 30초 기본
+            timeout: 60s
             script: |
+                cd /home/${{ secrets.SSH_USERNAME }}/korail_bot || exit 1
+
+                # Pull latest code
+                git pull origin master
+
+                # Login to Docker Hub
                 docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+                # Pull latest image
                 docker pull geunsam2/korailbot:latest
-                docker rm -f korailreserve
-                docker run -it -d \
-                    -p 8000:8080 \
-                    --restart always \
-                    -e USERID='${{ secrets.ADMIN_USERID }}' \
-                    -e USERPW='${{ secrets.ADMIN_PASSWD}}' \
-                    -e BOTTOKEN='${{ secrets.TELEGRAM_BOTTOKEN }}' \
-                    -e ALLOW_LIST='${{ vars.ALLOW_LIST }}' \
-                    --name korailreserve \
-                    geunsam2/korailbot:latest
+
+                # Stop and remove old containers
+                docker-compose down
+
+                # Start services with Docker Compose
+                USERID='${{ secrets.ADMIN_USERID }}' \
+                USERPW='${{ secrets.ADMIN_PASSWD}}' \
+                BOTTOKEN='${{ secrets.TELEGRAM_BOTTOKEN }}' \
+                ALLOW_LIST='${{ vars.ALLOW_LIST }}' \
+                REDIS_HOST=redis \
+                REDIS_PORT=6379 \
+                docker-compose up -d
+
+                # Show status
+                docker-compose ps
+                docker-compose logs --tail=50
