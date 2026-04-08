@@ -67,11 +67,21 @@ class BackgroundReservationProcess:
 
         logger.info(f"Redis storage connected: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
 
-        logger.info(
-            f"Initialized background process: {self.src_locate} -> {self.dst_locate} "
-            f"on {self.dep_date} for chat_id={self.chat_id}, "
-            f"passengers={self.passenger_count}, strategy={self.seat_strategy}"
-        )
+        logger.info(f"========================================")
+        logger.info(f"Background Process Initialized")
+        logger.info(f"========================================")
+        logger.info(f"  chat_id: {self.chat_id}")
+        logger.info(f"  username: {self.username}")
+        logger.info(f"  dep_date: '{self.dep_date}'")
+        logger.info(f"  src_locate: '{self.src_locate}'")
+        logger.info(f"  dst_locate: '{self.dst_locate}'")
+        logger.info(f"  dep_time: '{self.dep_time}'")
+        logger.info(f"  max_dep_time: '{self.max_dep_time}'")
+        logger.info(f"  train_type_str: '{self.train_type_str}' -> {self.train_type}")
+        logger.info(f"  special_info_str: '{self.special_info_str}' -> {self.reserve_option}")
+        logger.info(f"  passenger_count: {self.passenger_count}")
+        logger.info(f"  seat_strategy: '{self.seat_strategy}'")
+        logger.info(f"========================================")
 
     def _parse_train_type(self, train_type_str: str) -> TrainType:
         """Parse train type from string."""
@@ -565,7 +575,16 @@ class BackgroundReservationProcess:
             Exception: If reservation fails
         """
         logger.info(f"🔍 Starting search for seat {seat_index + 1}...")
-        logger.info(f"Search params: {self.dep_date} {self.src_locate}→{self.dst_locate} {self.dep_time}~{self.max_dep_time}")
+        logger.info(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        logger.info(f"Search parameters being passed to korail.search_trains():")
+        logger.info(f"  dep_date: '{self.dep_date}'")
+        logger.info(f"  src_locate: '{self.src_locate}'")
+        logger.info(f"  dst_locate: '{self.dst_locate}'")
+        logger.info(f"  dep_time: '{self.dep_time}'")
+        logger.info(f"  max_dep_time: '{self.max_dep_time}'")
+        logger.info(f"  train_type: {self.train_type}")
+        logger.info(f"  passenger_count: 1 (single seat for random)")
+        logger.info(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
         attempts = 0
         max_attempts = None  # Infinite

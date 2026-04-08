@@ -84,10 +84,16 @@ class KorailService:
             # Create passenger list
             passengers = [AdultPassenger(passenger_count)]
 
-            logger.debug(
-                f"🔍 Searching: {dep_date} {src_locate}→{dst_locate} "
-                f"time={dep_time}~{max_dep_time} type={train_type} passengers={passenger_count}"
+            logger.info(
+                f"🔍 Searching trains with parameters:"
             )
+            logger.info(f"  dep_date: {dep_date} (type: {type(dep_date).__name__})")
+            logger.info(f"  src_locate: '{src_locate}' (type: {type(src_locate).__name__})")
+            logger.info(f"  dst_locate: '{dst_locate}' (type: {type(dst_locate).__name__})")
+            logger.info(f"  dep_time: {dep_time} (type: {type(dep_time).__name__})")
+            logger.info(f"  train_type: {train_type}")
+            logger.info(f"  passengers: {passengers} (count: {passenger_count})")
+            logger.info(f"  max_dep_time: {max_dep_time}")
 
             trains = self._korail_instance.search_train(
                 src_locate,
