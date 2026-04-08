@@ -575,19 +575,11 @@ class BackgroundReservationProcess:
             Exception: If reservation fails
         """
         logger.info(f"🔍 Starting search for seat {seat_index + 1}...")
-        logger.info(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        logger.info(f"Search parameters being passed to korail.search_trains():")
-        logger.info(f"  dep_date: '{self.dep_date}'")
-        logger.info(f"  src_locate: '{self.src_locate}'")
-        logger.info(f"  dst_locate: '{self.dst_locate}'")
-        logger.info(f"  dep_time: '{self.dep_time}'")
-        logger.info(f"  max_dep_time: '{self.max_dep_time}'")
-        logger.info(f"  train_type: {self.train_type}")
-        logger.info(f"  passenger_count: 1 (single seat for random)")
-        logger.info(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
         attempts = 0
         max_attempts = None  # Infinite
+        start_time = time.time()
+        last_notification_time = start_time
 
         while True:
             attempts += 1
@@ -595,7 +587,22 @@ class BackgroundReservationProcess:
                 logger.error(f"Max attempts reached for seat {seat_index + 1}")
                 return None
 
-            logger.info(f"🔄 Search attempt #{attempts} for seat {seat_index + 1}")
+            # Send progress notification every 60 seconds
+            current_time = time.time()
+            if current_time - last_notification_time >= 60:
+                elapsed_seconds = int(current_time - start_time)
+                elapsed_minutes = elapsed_seconds // 60
+                self.telegram.send_message(
+                    self.chat_id,
+                    f"🔄 예약 검색 중... ({seat_index + 1}번째 좌석)\n\n"
+                    f"시도 횟수: {attempts}회\n"
+                    f"경과 시간: 약 {elapsed_minutes}분\n\n"
+                    f"좌석이 나오는 즉시 예약을 시도합니다."
+                )
+                last_notification_time = current_time
+                logger.info(f"📢 Progress notification sent: {attempts} attempts, {elapsed_minutes} minutes")
+
+            logger.debug(f"🔄 Search attempt #{attempts} for seat {seat_index + 1}")
 
             # Search for trains (single passenger)
             try:

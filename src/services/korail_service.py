@@ -84,16 +84,16 @@ class KorailService:
             # Create passenger list
             passengers = [AdultPassenger(passenger_count)]
 
-            logger.info(
+            logger.debug(
                 f"🔍 Searching trains with parameters:"
             )
-            logger.info(f"  dep_date: {dep_date} (type: {type(dep_date).__name__})")
-            logger.info(f"  src_locate: '{src_locate}' (type: {type(src_locate).__name__})")
-            logger.info(f"  dst_locate: '{dst_locate}' (type: {type(dst_locate).__name__})")
-            logger.info(f"  dep_time: {dep_time} (type: {type(dep_time).__name__})")
-            logger.info(f"  train_type: {train_type}")
-            logger.info(f"  passengers: {passengers} (count: {passenger_count})")
-            logger.info(f"  max_dep_time: {max_dep_time}")
+            logger.debug(f"  dep_date: {dep_date} (type: {type(dep_date).__name__})")
+            logger.debug(f"  src_locate: '{src_locate}' (type: {type(src_locate).__name__})")
+            logger.debug(f"  dst_locate: '{dst_locate}' (type: {type(dst_locate).__name__})")
+            logger.debug(f"  dep_time: {dep_time} (type: {type(dep_time).__name__})")
+            logger.debug(f"  train_type: {train_type}")
+            logger.debug(f"  passengers: {passengers} (count: {passenger_count})")
+            logger.debug(f"  max_dep_time: {max_dep_time}")
 
             trains = self._korail_instance.search_train(
                 src_locate,
@@ -104,22 +104,22 @@ class KorailService:
                 passengers=passengers
             )
 
-            logger.info(f"📋 Korail API returned {len(trains) if trains else 0} trains")
+            logger.debug(f"📋 Korail API returned {len(trains) if trains else 0} trains")
 
             # Log each train found with seat availability
             if trains:
                 for i, train in enumerate(trains, 1):
                     # Try to extract seat info from train object
                     train_str = str(train)
-                    logger.info(f"  Train #{i}: {train_str}")
+                    logger.debug(f"  Train #{i}: {train_str}")
 
                     # Check if train has seat availability info
                     if hasattr(train, 'seat_available'):
-                        logger.info(f"    Seats available: {train.seat_available}")
+                        logger.debug(f"    Seats available: {train.seat_available}")
                     if hasattr(train, 'general_seat'):
-                        logger.info(f"    General seats: {train.general_seat}")
+                        logger.debug(f"    General seats: {train.general_seat}")
                     if hasattr(train, 'special_seat'):
-                        logger.info(f"    Special seats: {train.special_seat}")
+                        logger.debug(f"    Special seats: {train.special_seat}")
 
             # Filter by max departure time
             if trains and max_dep_time != "2400":
@@ -139,7 +139,7 @@ class KorailService:
                 trains = filtered_trains
                 logger.info(f"📊 After filtering: {len(trains)} trains remain")
 
-            logger.info(
+            logger.debug(
                 f"✅ Search complete: {len(trains)} trains available "
                 f"({src_locate}→{dst_locate} on {dep_date})"
             )
@@ -177,10 +177,10 @@ class KorailService:
             # Create passenger list
             passengers = [AdultPassenger(passenger_count)]
 
-            logger.info(f"🎫 Attempting reservation:")
-            logger.info(f"  Train: {train}")
-            logger.info(f"  Option: {option}")
-            logger.info(f"  Passengers: {passenger_count}")
+            logger.debug(f"🎫 Attempting reservation:")
+            logger.debug(f"  Train: {train}")
+            logger.debug(f"  Option: {option}")
+            logger.debug(f"  Passengers: {passenger_count}")
 
             reservation = self._korail_instance.reserve(train, passengers=passengers, option=option)
 

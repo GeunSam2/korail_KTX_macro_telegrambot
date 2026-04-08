@@ -127,6 +127,37 @@ class CommandHandler:
         status_message = self.reservation.get_status(chat_id)
         self.telegram.send_message(chat_id, status_message)
 
+    def handle_debug_on(self, chat_id: int) -> None:
+        """
+        Handle /debug_on command.
+
+        Args:
+            chat_id: Telegram chat ID
+        """
+        logger.info(f"Handling /debug_on for chat_id={chat_id}")
+        self.storage.set_debug_mode(chat_id, True)
+        self.telegram.send_message(
+            chat_id,
+            "🐛 디버그 로그가 활성화되었습니다.\n\n"
+            "예약 검색 시 상세한 로그가 표시됩니다.\n"
+            "/debug_off로 비활성화할 수 있습니다."
+        )
+
+    def handle_debug_off(self, chat_id: int) -> None:
+        """
+        Handle /debug_off command.
+
+        Args:
+            chat_id: Telegram chat ID
+        """
+        logger.info(f"Handling /debug_off for chat_id={chat_id}")
+        self.storage.set_debug_mode(chat_id, False)
+        self.telegram.send_message(
+            chat_id,
+            "✅ 디버그 로그가 비활성화되었습니다.\n\n"
+            "간단한 진행 상황만 표시됩니다."
+        )
+
     def handle_cancel_all(self, chat_id: int) -> None:
         """
         Handle /cancelall command (admin only).
@@ -289,6 +320,11 @@ class CommandHandler:
             self._handle_admin_command(chat_id, lambda cid: self.handle_broadcast(cid, args), f"/broadcast {args}")
         elif command == "/flushredis":
             self._handle_admin_command(chat_id, self.handle_flush_redis, "/flushredis")
+        # Debug commands - for all users
+        elif command == "/debug_on":
+            self.handle_debug_on(chat_id)
+        elif command == "/debug_off":
+            self.handle_debug_off(chat_id)
         else:
             self.handle_unknown_command(chat_id, command)
 

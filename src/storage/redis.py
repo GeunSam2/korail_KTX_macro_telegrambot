@@ -589,3 +589,20 @@ class RedisStorage(StorageInterface):
         except redis.RedisError as e:
             logger.error(f"Failed to flush Redis: {e}")
             raise
+
+    # ==================== Debug Mode Management ====================
+
+    def is_debug_mode(self, chat_id: int) -> bool:
+        """Check if debug mode is enabled for a user."""
+        key = f"debug_mode:{chat_id}"
+        return self.redis.get(key) == "1"
+
+    def set_debug_mode(self, chat_id: int, enabled: bool) -> None:
+        """Enable or disable debug mode for a user."""
+        key = f"debug_mode:{chat_id}"
+        if enabled:
+            self.redis.set(key, "1")
+            logger.info(f"Debug mode enabled for chat_id={chat_id}")
+        else:
+            self.redis.delete(key)
+            logger.info(f"Debug mode disabled for chat_id={chat_id}")
