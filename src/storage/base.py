@@ -108,6 +108,16 @@ class StorageInterface(ABC):
         """Set whether user is waiting to enter admin password."""
         pass
 
+    @abstractmethod
+    def get_pending_admin_command(self, chat_id: int) -> Optional[str]:
+        """Get pending admin command waiting for authentication."""
+        pass
+
+    @abstractmethod
+    def set_pending_admin_command(self, chat_id: int, command: Optional[str]) -> None:
+        """Set pending admin command waiting for authentication."""
+        pass
+
     # Multi-Reservation Status Management
     @abstractmethod
     def get_multi_reservation_status(self, chat_id: int) -> Optional[MultiReservationStatus]:

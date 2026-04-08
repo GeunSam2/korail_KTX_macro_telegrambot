@@ -113,6 +113,16 @@ class TelegramWebhook(Resource):
                 self.command_handler.handle_cancel(chat_id)
                 return make_response("OK")
 
+            # Check if waiting for admin password (takes priority over everything)
+            if self.storage.is_waiting_for_admin_password(chat_id):
+                # User is waiting to enter admin password
+                if self.command_handler.handle_admin_password(chat_id, text):
+                    # Successfully authenticated
+                    return make_response("OK")
+                else:
+                    # Failed authentication
+                    return make_response("OK")
+
             # Route commands
             if self.command_handler.is_command(text):
                 self.command_handler.route_command(chat_id, text)
@@ -120,16 +130,6 @@ class TelegramWebhook(Resource):
                 # Handle conversation flow
                 self.conversation_handler.handle_message(chat_id, text)
             else:
-                # Check if explicitly waiting for admin password
-                if self.storage.is_waiting_for_admin_password(chat_id):
-                    # User is waiting to enter admin password
-                    if self.command_handler.handle_admin_password(chat_id, text):
-                        # Successfully authenticated
-                        return make_response("OK")
-                    else:
-                        # Failed authentication
-                        return make_response("OK")
-
                 # No active session and not a command
                 self.telegram.send_message(
                     chat_id,

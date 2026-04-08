@@ -20,6 +20,7 @@ class InMemoryStorage(StorageInterface):
         self._subscribers: set[int] = set()
         self._admin_sessions: set[int] = set()  # Track authenticated admin sessions
         self._admin_password_pending: set[int] = set()  # Track users waiting to enter admin password
+        self._pending_admin_commands: Dict[int, str] = {}  # Track pending admin commands
         self._multi_reservation_statuses: Dict[int, MultiReservationStatus] = {}  # Track multi-reservation payment status
 
     # User Session Management
@@ -111,6 +112,17 @@ class InMemoryStorage(StorageInterface):
             self._admin_password_pending.add(chat_id)
         else:
             self._admin_password_pending.discard(chat_id)
+
+    def get_pending_admin_command(self, chat_id: int) -> Optional[str]:
+        """Get pending admin command waiting for authentication."""
+        return self._pending_admin_commands.get(chat_id)
+
+    def set_pending_admin_command(self, chat_id: int, command: Optional[str]) -> None:
+        """Set pending admin command waiting for authentication."""
+        if command:
+            self._pending_admin_commands[chat_id] = command
+        else:
+            self._pending_admin_commands.pop(chat_id, None)
 
     # Multi-Reservation Status Management
     def get_multi_reservation_status(self, chat_id: int) -> Optional[MultiReservationStatus]:

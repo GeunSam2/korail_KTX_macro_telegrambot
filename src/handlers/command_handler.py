@@ -230,25 +230,26 @@ class CommandHandler:
             self.handle_help(chat_id)
         # Admin commands - require authentication
         elif command == "/subscribe":
-            self._handle_admin_command(chat_id, self.handle_subscribe)
+            self._handle_admin_command(chat_id, self.handle_subscribe, "/subscribe")
         elif command == "/cancelall":
-            self._handle_admin_command(chat_id, self.handle_cancel_all)
+            self._handle_admin_command(chat_id, self.handle_cancel_all, "/cancelall")
         elif command == "/allusers":
-            self._handle_admin_command(chat_id, self.handle_all_users)
+            self._handle_admin_command(chat_id, self.handle_all_users, "/allusers")
         elif command == "/broadcast":
-            self._handle_admin_command(chat_id, lambda cid: self.handle_broadcast(cid, args))
+            self._handle_admin_command(chat_id, lambda cid: self.handle_broadcast(cid, args), f"/broadcast {args}")
         else:
             self.handle_unknown_command(chat_id, command)
 
         return True
 
-    def _handle_admin_command(self, chat_id: int, handler_func) -> None:
+    def _handle_admin_command(self, chat_id: int, handler_func, command_name: str = "") -> None:
         """
         Handle admin command with authentication check.
 
         Args:
             chat_id: Telegram chat ID
             handler_func: Function to call if authenticated
+            command_name: Name of the command for tracking
         """
         if self.storage.is_admin_authenticated(chat_id):
             # Already authenticated, execute command
@@ -257,8 +258,9 @@ class CommandHandler:
             # Request password and mark as waiting
             from telegramBot.messages import Messages
             self.storage.set_waiting_for_admin_password(chat_id, True)
+            self.storage.set_pending_admin_command(chat_id, command_name)
             self.telegram.send_message(chat_id, Messages.ADMIN_AUTH_REQUIRED)
-            logger.info(f"Admin authentication required for chat_id={chat_id}")
+            logger.info(f"Admin authentication required for chat_id={chat_id}, command={command_name}")
 
     def handle_admin_password(self, chat_id: int, password: str) -> bool:
         """
@@ -273,13 +275,23 @@ class CommandHandler:
         """
         from telegramBot.messages import Messages
 
+        # Get pending command before clearing state
+        pending_command = self.storage.get_pending_admin_command(chat_id)
+
         # Clear waiting state
         self.storage.set_waiting_for_admin_password(chat_id, False)
+        self.storage.set_pending_admin_command(chat_id, None)
 
         if password == settings.ADMIN_PASSWORD:
             self.storage.set_admin_authenticated(chat_id, True)
             self.telegram.send_message(chat_id, Messages.ADMIN_AUTH_SUCCESS)
             logger.info(f"Admin authenticated: chat_id={chat_id}")
+
+            # Execute pending command if exists
+            if pending_command:
+                logger.info(f"Executing pending admin command: {pending_command}")
+                self.route_command(chat_id, pending_command)
+
             return True
         else:
             self.telegram.send_message(chat_id, Messages.ADMIN_AUTH_FAILED)
