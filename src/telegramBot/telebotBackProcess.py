@@ -630,8 +630,7 @@ class BackgroundReservationProcess:
             Reservation object if successful
 
         Raises:
-            DuplicateReservationError: If duplicate detected (shouldn't happen in random)
-            Exception: If reservation fails
+            Exception: If reservation fails with non-duplicate error
         """
         logger.info(f"🔍 Starting search for seat {seat_index + 1}...")
 
@@ -639,6 +638,7 @@ class BackgroundReservationProcess:
         max_attempts = None  # Infinite
         start_time = time.time()
         last_notification_time = start_time
+        duplicate_notified = False  # Track if we already notified about duplicate
 
         while True:
             attempts += 1
@@ -686,6 +686,7 @@ class BackgroundReservationProcess:
                 continue
 
             # Try to reserve
+            duplicate_found = False
             for idx, train in enumerate(trains, 1):
                 logger.info(f"🚂 Trying train {idx}/{len(trains)}: {train}")
 
@@ -696,9 +697,27 @@ class BackgroundReservationProcess:
                 )
 
                 if reservation == "DUPLICATE":
-                    # Should not happen in random seating (each seat is separate)
-                    logger.error(f"❌ Unexpected duplicate for seat {seat_index + 1}")
-                    raise DuplicateReservationError("Duplicate in random seating")
+                    # Duplicate reservation exists - notify user once and keep retrying
+                    logger.warning(f"⚠️ Duplicate reservation detected for seat {seat_index + 1}")
+                    duplicate_found = True
+
+                    if not duplicate_notified:
+                        # Send notification only once
+                        self.telegram.send_message(
+                            self.chat_id,
+                            f"⚠️ {seat_index + 1}번째 좌석 예약 시도 중 기존 예약 감지\n\n"
+                            f"이미 해당 시간에 예약된 좌석이 있습니다.\n"
+                            f"기존 예약이 취소될 때까지 10초마다 재시도합니다.\n\n"
+                            f"🔗 기존 예약 확인: {settings.KORAIL_PAYMENT_URL}\n\n"
+                            f"💡 검색을 중단하려면 /cancel 명령어를 사용하세요.\n"
+                            f"💡 기존 예약을 취소하면 자동으로 새 예약을 시도합니다."
+                        )
+                        duplicate_notified = True
+                        logger.info(f"📢 Duplicate notification sent for seat {seat_index + 1}")
+
+                    # Continue to next train
+                    continue
+
                 elif reservation:
                     logger.info(f"✅ Seat {seat_index + 1} reserved after {attempts} search attempts!")
                     logger.info(f"🎉 Successfully reserved: {reservation}")
@@ -708,11 +727,13 @@ class BackgroundReservationProcess:
                     logger.info(f"  → Trying next train...")
 
             # All trains in this search failed
-            logger.info(f"⚠️ All {len(trains)} trains sold out in attempt #{attempts}")
-            logger.info(f"💤 Waiting {self.korail._search_interval}s before retry...")
-
-            # Wait before retry
-            time.sleep(self.korail._search_interval)
+            if duplicate_found:
+                logger.info(f"⚠️ Duplicate reservation detected, waiting 10s before retry...")
+                time.sleep(10)  # Wait 10 seconds when duplicate found
+            else:
+                logger.info(f"⚠️ All {len(trains)} trains sold out in attempt #{attempts}")
+                logger.info(f"💤 Waiting {self.korail._search_interval}s before retry...")
+                time.sleep(self.korail._search_interval)
 
     def _build_partial_reservation_message(self, seat_index: int, total_seats: int, reservation) -> str:
         """Build message for partial reservation success."""
