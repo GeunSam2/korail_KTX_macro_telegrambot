@@ -17,7 +17,7 @@ src_dir = os.path.dirname(script_dir)
 sys.path.insert(0, src_dir)
 
 from config.settings import settings
-from storage import InMemoryStorage
+from storage.redis import RedisStorage
 from services import KorailService, TelegramService, PaymentReminderService, MultiReservationReminderService
 from services.korail_service import DuplicateReservationError
 from models import MultiReservationStatus, SingleReservationInfo, ReservationPaymentStatus
@@ -58,11 +58,13 @@ class BackgroundReservationProcess:
         self.reserve_option = self._parse_reserve_option(self.special_info_str)
 
         # Initialize services
-        self.storage = InMemoryStorage()
+        self.storage = RedisStorage()
         self.telegram = TelegramService(settings.TELEGRAM_BOT_TOKEN)
         self.payment_reminder = PaymentReminderService(self.storage, self.telegram)
         self.multi_reminder = MultiReservationReminderService(self.storage, self.telegram)
         self.korail = KorailService()
+
+        logger.info(f"Redis storage connected: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
 
         logger.info(
             f"Initialized background process: {self.src_locate} -> {self.dst_locate} "

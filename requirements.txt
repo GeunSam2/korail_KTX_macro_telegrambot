@@ -32,3 +32,5 @@ urllib3==2.6.3; python_version >= '3.9'
 werkzeug==3.1.8; python_version >= '3.9'
 zipp==3.23.0; python_version >= '3.9'
 uwsgi==2.0.31
+redis==5.2.1; python_version >= '3.8'
+hiredis==3.1.0; python_version >= '3.8'

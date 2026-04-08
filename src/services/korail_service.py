@@ -324,13 +324,15 @@ class KorailService:
                         logger.debug("Duplicate reservation still exists, continuing search...")
                 elif reservation:
                     reservations.append(reservation)
+                    current_count = len(reservations)
                     logger.info(
-                        f"Reserved seat {len(reservations)}/{target_count} "
+                        f"Reserved seat {current_count}/{target_count} "
                         f"(attempt #{attempts})"
                     )
+                    logger.info(f"Reservation details: {reservation}")
 
                     # Check if we've reached target
-                    if len(reservations) >= target_count:
+                    if current_count >= target_count:
                         logger.info(
                             f"All {target_count} seats reserved successfully! "
                             f"Total attempts: {attempts}"

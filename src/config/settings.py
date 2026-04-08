@@ -51,6 +51,17 @@ class Settings:
     # Process Management
     RECURSION_LIMIT: int = 10**7
 
+    # Redis Configuration
+    REDIS_HOST: str = os.environ.get('REDIS_HOST', 'localhost')
+    REDIS_PORT: int = int(os.environ.get('REDIS_PORT', '6379'))
+    REDIS_DB: int = int(os.environ.get('REDIS_DB', '0'))
+    REDIS_PASSWORD: Optional[str] = os.environ.get('REDIS_PASSWORD')
+    REDIS_DECODE_RESPONSES: bool = True
+    REDIS_SOCKET_TIMEOUT: int = 5
+    REDIS_SOCKET_CONNECT_TIMEOUT: int = 5
+    REDIS_RETRY_ON_TIMEOUT: bool = True
+    REDIS_MAX_CONNECTIONS: int = 50
+
     @classmethod
     def validate(cls) -> None:
         """Validate required settings."""

@@ -12,7 +12,7 @@ from flask_cors import CORS
 sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from config.settings import settings
-from storage import InMemoryStorage
+from storage.redis import RedisStorage
 from services import (
     TelegramService,
     KorailService,
@@ -40,8 +40,14 @@ application = Flask(__name__)
 CORS(application)
 api = Api(application)
 
-# Initialize storage (singleton)
-storage = InMemoryStorage()
+# Initialize storage (Redis)
+try:
+    storage = RedisStorage()
+    logger.info("✅ Redis storage initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize Redis storage: {e}")
+    logger.error("Please ensure Redis is running and accessible")
+    sys.exit(1)
 
 # Initialize services
 telegram_service = TelegramService(settings.TELEGRAM_BOT_TOKEN)
@@ -69,12 +75,13 @@ api.add_resource(
 )
 
 logger.info("="*60)
-logger.info("Korail KTX Telegram Bot - Refactored Version")
+logger.info("Korail KTX Telegram Bot - Redis Version")
 logger.info("="*60)
 logger.info(f"Flask host: {settings.FLASK_HOST}")
 logger.info(f"Flask port: {settings.FLASK_PORT}")
 logger.info(f"Debug mode: {settings.FLASK_DEBUG}")
 logger.info(f"Log level: {settings.LOG_LEVEL}")
+logger.info(f"Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}")
 logger.info(f"Search interval: {settings.KORAIL_SEARCH_INTERVAL}s")
 logger.info(f"Payment timeout: {settings.PAYMENT_TIMEOUT_MINUTES}min")
 logger.info(f"Reminder interval: {settings.PAYMENT_REMINDER_INTERVAL_SECONDS}s")
