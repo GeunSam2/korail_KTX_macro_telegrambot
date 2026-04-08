@@ -580,7 +580,7 @@ class BackgroundReservationProcess:
                 total_seats,
                 reservation
             )
-            self._send_callback(message, status=2)  # status=2: partial success
+            self._send_callback(message, status=2, seat_strategy=self.seat_strategy)  # status=2: partial success
 
             # Wait for payment confirmation (or timeout)
             if seat_index < total_seats - 1:  # Not the last seat
@@ -598,7 +598,7 @@ class BackgroundReservationProcess:
 
 다음 좌석 예약을 시작합니다...
 """
-                    self._send_callback(confirm_msg, status=2)
+                    self._send_callback(confirm_msg, status=2, seat_strategy=self.seat_strategy)
                 else:
                     logger.warning(f"⏱ Payment timeout for seat {seat_index + 1}")
                     timeout_msg = f"""
@@ -608,7 +608,7 @@ class BackgroundReservationProcess:
 
 ⚠️ 미결제 좌석은 자동 취소될 수 있으니 빠르게 결제해주세요!
 """
-                    self._send_callback(timeout_msg, status=2)
+                    self._send_callback(timeout_msg, status=2, seat_strategy=self.seat_strategy)
 
                 # Brief pause before next reservation
                 logger.info("Waiting 3 seconds before next reservation...")
@@ -619,7 +619,7 @@ class BackgroundReservationProcess:
         all_reservations = self.storage.get_partial_reservations(self.chat_id)
 
         final_message = self._build_final_random_message(all_reservations, total_seats)
-        self._send_callback(final_message, status=0)  # status=0: complete success
+        self._send_callback(final_message, status=0, seat_strategy=self.seat_strategy)  # status=0: complete success
 
         logger.info(f"🎉 All {total_seats} seats reserved successfully!")
 
