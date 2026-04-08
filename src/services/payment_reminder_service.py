@@ -1,6 +1,7 @@
 """Payment reminder service."""
 import time
 import requests
+import threading
 from datetime import datetime
 
 from config.settings import settings
@@ -39,7 +40,7 @@ class PaymentReminderService:
 
     def start_reminders(self, chat_id: int) -> None:
         """
-        Start sending payment reminders to a user.
+        Start sending payment reminders to a user (in background thread).
 
         Sends reminders at configured intervals until:
         - User confirms payment
@@ -65,38 +66,58 @@ class PaymentReminderService:
         )
         self.storage.save_payment_status(payment_status)
 
-        total_seconds = self.timeout_minutes * 60
         logger.info(
-            f"Starting payment reminders for chat_id={chat_id}, "
+            f"Starting payment reminders for chat_id={chat_id} in background thread, "
             f"timeout={self.timeout_minutes}min, interval={self.interval_seconds}sec"
         )
 
-        for elapsed in range(self.interval_seconds, total_seconds + self.interval_seconds, self.interval_seconds):
-            time.sleep(self.interval_seconds)
+        # Start reminder loop in background thread (non-blocking)
+        thread = threading.Thread(
+            target=self._reminder_loop,
+            args=(chat_id,),
+            daemon=True
+        )
+        thread.start()
 
-            # Check if payment completed
+    def _reminder_loop(self, chat_id: int) -> None:
+        """
+        Reminder loop that runs in background thread.
+
+        Args:
+            chat_id: Telegram chat ID
+        """
+        try:
+            total_seconds = self.timeout_minutes * 60
+
+            for elapsed in range(self.interval_seconds, total_seconds + self.interval_seconds, self.interval_seconds):
+                time.sleep(self.interval_seconds)
+
+                # Check if payment completed
+                if self.check_payment_completed(chat_id):
+                    self._send_completion_message(chat_id)
+                    self._deactivate_reminder(chat_id)
+                    return
+
+                # Calculate remaining time
+                remaining_seconds = total_seconds - elapsed
+
+                # Send reminder if time remaining
+                if remaining_seconds > 0:
+                    remaining_minutes = remaining_seconds // 60
+                    remaining_secs = remaining_seconds % 60
+                    self._send_reminder(chat_id, remaining_minutes, remaining_secs)
+
+            # Final check after timeout
             if self.check_payment_completed(chat_id):
                 self._send_completion_message(chat_id)
-                self._deactivate_reminder(chat_id)
-                return
+            else:
+                self._send_timeout_message(chat_id)
 
-            # Calculate remaining time
-            remaining_seconds = total_seconds - elapsed
+            # Deactivate reminder after completion or timeout
+            self._deactivate_reminder(chat_id)
 
-            # Send reminder if time remaining
-            if remaining_seconds > 0:
-                remaining_minutes = remaining_seconds // 60
-                remaining_secs = remaining_seconds % 60
-                self._send_reminder(chat_id, remaining_minutes, remaining_secs)
-
-        # Final check after timeout
-        if self.check_payment_completed(chat_id):
-            self._send_completion_message(chat_id)
-        else:
-            self._send_timeout_message(chat_id)
-
-        # Deactivate reminder after completion or timeout
-        self._deactivate_reminder(chat_id)
+        except Exception as e:
+            logger.error(f"Error in reminder loop for chat_id={chat_id}: {e}", exc_info=True)
 
     def check_payment_completed(self, chat_id: int) -> bool:
         """

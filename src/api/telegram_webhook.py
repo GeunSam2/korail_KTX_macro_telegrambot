@@ -3,7 +3,7 @@ from flask import request, make_response
 from flask_restful import Resource
 
 from storage.base import StorageInterface
-from services import TelegramService, ReservationService, PaymentReminderService
+from services import TelegramService, ReservationService, PaymentReminderService, MultiReservationReminderService
 from handlers import CommandHandler, ConversationHandler
 from models import PaymentStatus
 from utils.logger import get_logger
@@ -40,6 +40,9 @@ class TelegramWebhook(Resource):
         self.telegram = telegram_service
         self.reservation = reservation_service
         self.payment_reminder = payment_reminder_service
+
+        # Initialize multi-reservation reminder service (singleton for thread tracking)
+        self.multi_reminder = MultiReservationReminderService(storage, telegram_service)
 
         # Initialize handlers
         self.command_handler = CommandHandler(
@@ -97,9 +100,7 @@ class TelegramWebhook(Resource):
                 # User sent any non-command message during multi-reservation reminder
                 if text and not text.startswith('/'):
                     # Mark all as paid and stop reminders
-                    from services import MultiReservationReminderService
-                    multi_reminder = MultiReservationReminderService(self.storage, self.telegram)
-                    multi_reminder.mark_all_paid(chat_id)
+                    self.multi_reminder.mark_all_paid(chat_id)
 
                     # Send confirmation
                     self.telegram.send_message(
@@ -205,6 +206,13 @@ class TelegramWebhook(Resource):
             if str(status) == "2":
                 # Partial reservation notification (random seating)
                 logger.info(f"Partial reservation notification for chat_id={chat_id}")
+
+                # Check if multi-reservation status exists and start reminders if needed
+                multi_status = self.storage.get_multi_reservation_status(chat_id)
+                if multi_status:
+                    # Start multi-reservation reminders (checks for duplicates internally)
+                    self.multi_reminder.start_reminders(chat_id)
+
                 # Message already sent above, no further action needed
                 # User will send payment confirmation which will be handled by POST webhook
                 return make_response("OK")
