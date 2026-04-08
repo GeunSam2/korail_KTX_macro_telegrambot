@@ -467,10 +467,7 @@ class BackgroundReservationProcess:
         for seat_index in range(total_seats):
             logger.info(f"━━━ Seat {seat_index + 1}/{total_seats} ━━━")
 
-            # Set current seat index in Redis
-            self.storage.set_current_seat_index(self.chat_id, seat_index)
-
-            # Reserve one seat
+            # Reserve one seat (don't set current_seat_index yet!)
             try:
                 reservation = self._reserve_single_seat_random(seat_index)
             except Exception as e:
@@ -499,6 +496,10 @@ class BackgroundReservationProcess:
             }
             self.storage.save_partial_reservation(self.chat_id, seat_index, reservation_data)
             logger.info(f"✅ Seat {seat_index + 1} reserved and saved to Redis")
+
+            # NOW set current seat index for payment waiting
+            # This prevents "결제 대기중" message before reservation succeeds
+            self.storage.set_current_seat_index(self.chat_id, seat_index)
 
             # Send notification to user
             message = self._build_partial_reservation_message(
@@ -563,7 +564,8 @@ class BackgroundReservationProcess:
             DuplicateReservationError: If duplicate detected (shouldn't happen in random)
             Exception: If reservation fails
         """
-        logger.info(f"Searching for seat {seat_index + 1}...")
+        logger.info(f"🔍 Starting search for seat {seat_index + 1}...")
+        logger.info(f"Search params: {self.dep_date} {self.src_locate}→{self.dst_locate} {self.dep_time}~{self.max_dep_time}")
 
         attempts = 0
         max_attempts = None  # Infinite
@@ -574,19 +576,27 @@ class BackgroundReservationProcess:
                 logger.error(f"Max attempts reached for seat {seat_index + 1}")
                 return None
 
+            logger.info(f"🔄 Search attempt #{attempts} for seat {seat_index + 1}")
+
             # Search for trains (single passenger)
-            trains = self.korail.search_trains(
-                dep_date=self.dep_date,
-                src_locate=self.src_locate,
-                dst_locate=self.dst_locate,
-                dep_time=self.dep_time,
-                max_dep_time=self.max_dep_time,
-                train_type=self.train_type,
-                passenger_count=1  # Single seat
-            )
+            try:
+                trains = self.korail.search_trains(
+                    dep_date=self.dep_date,
+                    src_locate=self.src_locate,
+                    dst_locate=self.dst_locate,
+                    dep_time=self.dep_time,
+                    max_dep_time=self.max_dep_time,
+                    train_type=self.train_type,
+                    passenger_count=1  # Single seat
+                )
+                logger.info(f"✅ Search completed: found {len(trains) if trains else 0} trains")
+            except Exception as e:
+                logger.error(f"❌ Search failed (attempt #{attempts}): {e}", exc_info=True)
+                time.sleep(self.korail._search_interval)
+                continue
 
             if not trains:
-                logger.debug(f"No trains found (attempt #{attempts})")
+                logger.info(f"No trains available (attempt #{attempts}), retrying in {self.korail._search_interval}s...")
                 time.sleep(self.korail._search_interval)
                 continue
 
