@@ -256,9 +256,19 @@ class RedisStorage(StorageInterface):
         self.redis.setex(key, ttl, data)
 
     def delete_multi_reservation_status(self, chat_id: int) -> None:
-        """Delete multi-reservation status."""
+        """Delete multi-reservation status and related keys."""
+        # Delete main status
         key = f"multi_reservation_status:{chat_id}"
         self.redis.delete(key)
+
+        # Delete current seat index
+        seat_key = f"current_seat_index:{chat_id}"
+        self.redis.delete(seat_key)
+
+        # Delete all payment ready flags for this user
+        payment_keys = self.redis.keys(f"payment_ready:{chat_id}:*")
+        if payment_keys:
+            self.redis.delete(*payment_keys)
 
     def get_all_multi_reservation_statuses(self) -> List[MultiReservationStatus]:
         """Get all multi-reservation statuses."""
