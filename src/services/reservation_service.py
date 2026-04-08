@@ -1,6 +1,7 @@
 """Reservation orchestration service."""
 import subprocess
 import signal
+import os
 from typing import Optional
 from korail2 import TrainType, ReserveOption
 
@@ -130,7 +131,7 @@ class ReservationService:
             # Kill process
             try:
                 if reservation.process_id != 9999999:
-                    signal.kill(reservation.process_id, signal.SIGTERM)
+                    os.kill(reservation.process_id, signal.SIGTERM)
                     logger.info(f"Killed process {reservation.process_id}")
             except ProcessLookupError:
                 logger.warning(f"Process {reservation.process_id} not found")
@@ -171,7 +172,7 @@ class ReservationService:
             try:
                 # Kill process
                 if reservation.process_id != 9999999:
-                    signal.kill(reservation.process_id, signal.SIGTERM)
+                    os.kill(reservation.process_id, signal.SIGTERM)
                     logger.info(f"Killed process {reservation.process_id}")
 
                 # Notify user

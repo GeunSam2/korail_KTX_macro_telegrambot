@@ -135,6 +135,7 @@ class KorailService:
 
         Returns:
             Reservation object if successful, None otherwise
+            Returns "DUPLICATE" string if duplicate reservation detected
         """
         if not self._logged_in or not self._korail_instance:
             raise ValueError("Must login before reserving")
@@ -155,14 +156,14 @@ class KorailService:
             return None
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Error reserving train: {error_msg}")
 
             # Check for duplicate reservation error
             if "동일한 예약 내역" in error_msg or "WRR800029" in error_msg:
-                # This means reservation already exists - should stop the loop
-                logger.warning("Duplicate reservation detected - raising exception to stop loop")
-                raise DuplicateReservationError(error_msg)
+                # Return special value instead of raising exception
+                logger.warning("Duplicate reservation detected - will continue searching")
+                return "DUPLICATE"
 
+            logger.error(f"Error reserving train: {error_msg}")
             return None
 
     def search_and_reserve_loop(
@@ -230,6 +231,7 @@ class KorailService:
     ):
         """Reserve seats consecutively (together)."""
         attempts = 0
+        duplicate_notified = False
 
         while True:
             attempts += 1
@@ -247,7 +249,17 @@ class KorailService:
                 logger.info(f"Found train: {train}, attempting reservation...")
                 reservation = self.reserve_train(train, option=reserve_option, passenger_count=passenger_count)
 
-                if reservation:
+                if reservation == "DUPLICATE":
+                    # Duplicate reservation detected
+                    if not duplicate_notified:
+                        # First time - raise exception to notify user once
+                        duplicate_notified = True
+                        logger.warning("First duplicate detection - notifying user")
+                        raise DuplicateReservationError("동일한 예약 내역이 존재합니다")
+                    else:
+                        # Already notified - just log and continue
+                        logger.debug("Duplicate reservation still exists, continuing search...")
+                elif reservation:
                     logger.info(f"Reservation successful after {attempts} attempts")
                     return reservation
                 else:
@@ -272,6 +284,7 @@ class KorailService:
         attempts = 0
         reservations = []
         target_count = passenger_count
+        duplicate_notified = False
 
         logger.info(f"Random seating: will reserve {target_count} individual tickets")
 
@@ -299,7 +312,17 @@ class KorailService:
                 # Reserve one seat at a time
                 reservation = self.reserve_train(train, option=reserve_option, passenger_count=1)
 
-                if reservation:
+                if reservation == "DUPLICATE":
+                    # Duplicate reservation detected
+                    if not duplicate_notified:
+                        # First time - raise exception to notify user once
+                        duplicate_notified = True
+                        logger.warning("First duplicate detection - notifying user")
+                        raise DuplicateReservationError("동일한 예약 내역이 존재합니다")
+                    else:
+                        # Already notified - just log and continue
+                        logger.debug("Duplicate reservation still exists, continuing search...")
+                elif reservation:
                     reservations.append(reservation)
                     logger.info(
                         f"Reserved seat {len(reservations)}/{target_count} "

@@ -142,6 +142,7 @@ class BackgroundReservationProcess:
             logger.info("Login successful, starting reservation loop...")
 
             # Search and reserve
+            reservation = None
             try:
                 reservation = self.korail.search_and_reserve_loop(
                     dep_date=self.dep_date,
@@ -155,18 +156,41 @@ class BackgroundReservationProcess:
                     seat_strategy=self.seat_strategy
                 )
             except DuplicateReservationError as e:
-                logger.warning(f"Duplicate reservation detected: {e}")
+                # First duplicate detection - notify user but continue searching
+                logger.warning(f"Duplicate reservation detected (first time): {e}")
                 message = f"""
-⚠️ 중복 예약 감지
+⚠️ 기존 예약 감지
 
 이미 동일한 열차에 대한 예약이 존재합니다.
 
-🔗 기존 예약을 확인하세요: {settings.KORAIL_PAYMENT_URL}
+🔄 기존 예약이 취소될 때까지 대기하면서 계속 검색합니다...
 
-💡 기존 예약을 취소하고 다시 시도하려면 /cancel 명령어를 사용하세요.
+🔗 기존 예약 확인: {settings.KORAIL_PAYMENT_URL}
+
+💡 검색을 중단하려면 /cancel 명령어를 사용하세요.
+💡 기존 예약을 취소하면 자동으로 새 예약을 시도합니다.
 """
-                self._send_callback(message, status=1)
-                return
+                # Send notification but DON'T stop the process
+                self._send_callback(message, status=2)  # status=2 for warning/info
+
+                # Continue the reservation loop (retry)
+                logger.info("Continuing search after duplicate detection...")
+                try:
+                    reservation = self.korail.search_and_reserve_loop(
+                        dep_date=self.dep_date,
+                        src_locate=self.src_locate,
+                        dst_locate=self.dst_locate,
+                        dep_time=self.dep_time,
+                        max_dep_time=self.max_dep_time,
+                        train_type=self.train_type,
+                        reserve_option=self.reserve_option,
+                        passenger_count=self.passenger_count,
+                        seat_strategy=self.seat_strategy
+                    )
+                except DuplicateReservationError:
+                    # Should not happen as we already notified, but handle gracefully
+                    logger.error("Duplicate error raised again - this shouldn't happen")
+                    pass
             except requests.exceptions.RequestException as e:
                 logger.error(f"Network error during reservation: {e}")
                 message = f"""
