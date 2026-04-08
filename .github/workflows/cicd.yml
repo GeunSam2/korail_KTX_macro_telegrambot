@@ -35,6 +35,17 @@ jobs:
             cache-to: type=gha,mode=max
 
     -
+        name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@master
+        with:
+            host: server.geunsam2.xyz
+            username: ${{ secrets.SSH_USERNAME }}
+            password: ${{ secrets.SSH_PASSWORD }}
+            port: 22
+            source: "docker-compose.yml"
+            target: "/home/${{ secrets.SSH_USERNAME }}/korail_bot/"
+
+    -
         name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -46,8 +57,16 @@ jobs:
             script: |
                 cd /home/${{ secrets.SSH_USERNAME }}/korail_bot || exit 1
 
-                # Pull latest code
-                git pull origin master
+                # Create .env file with secrets
+                cat > .env << EOF
+                USERID=${{ secrets.ADMIN_USERID }}
+                USERPW=${{ secrets.ADMIN_PASSWD}}
+                BOTTOKEN=${{ secrets.TELEGRAM_BOTTOKEN }}
+                ALLOW_LIST=${{ vars.ALLOW_LIST }}
+                REDIS_HOST=redis
+                REDIS_PORT=6379
+                REDIS_DB=0
+                EOF
 
                 # Login to Docker Hub
                 docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
@@ -59,14 +78,11 @@ jobs:
                 docker-compose down
 
                 # Start services with Docker Compose
-                USERID='${{ secrets.ADMIN_USERID }}' \
-                USERPW='${{ secrets.ADMIN_PASSWD}}' \
-                BOTTOKEN='${{ secrets.TELEGRAM_BOTTOKEN }}' \
-                ALLOW_LIST='${{ vars.ALLOW_LIST }}' \
-                REDIS_HOST=redis \
-                REDIS_PORT=6379 \
                 docker-compose up -d
 
                 # Show status
+                echo "=== Docker Compose Status ==="
                 docker-compose ps
-                docker-compose logs --tail=50
+                echo ""
+                echo "=== Recent Logs ==="
+                docker-compose logs --tail=30

@@ -2,10 +2,10 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    image: geunsam2/korailbot:latest
     container_name: korail_bot
     ports:
-      - "5000:5000"
+      - "8000:8080"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -16,9 +16,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    volumes:
-      - ./logs:/app/logs
-      - ./src:/app/src
     restart: unless-stopped
     networks:
       - korail_network
