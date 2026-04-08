@@ -113,6 +113,27 @@ class TelegramWebhook(Resource):
                 self.command_handler.handle_cancel(chat_id)
                 return make_response("OK")
 
+            # Check if random seating in progress (waiting for payment confirmation)
+            current_seat = self.storage.get_current_seat_index(chat_id)
+            if current_seat is not None:  # Random seating in progress
+                # Check for payment confirmation keywords
+                if text.lower() in ["결제완료", "완료", "결제 완료", "done", "paid", "complete"]:
+                    logger.info(f"Payment confirmation received for seat {current_seat}, chat_id={chat_id}")
+                    self.storage.mark_payment_ready(chat_id, current_seat)
+                    self.telegram.send_message(
+                        chat_id,
+                        f"✅ {current_seat + 1}번째 좌석 결제 확인!\n\n다음 좌석 예약을 진행합니다..."
+                    )
+                    return make_response("OK")
+                else:
+                    # User sent other message during random seating
+                    self.telegram.send_message(
+                        chat_id,
+                        f"⏳ {current_seat + 1}번째 좌석 결제 대기 중입니다.\n\n"
+                        f"결제 완료 후 '결제완료' 또는 '완료' 메시지를 보내주세요."
+                    )
+                    return make_response("OK")
+
             # Check if waiting for admin password (takes priority over everything)
             if self.storage.is_waiting_for_admin_password(chat_id):
                 # User is waiting to enter admin password
@@ -173,6 +194,18 @@ class TelegramWebhook(Resource):
 
             # Send message to user
             self.telegram.send_message(chat_id, msg)
+
+            # Handle different status codes
+            # status=0: Complete success (all reservations done)
+            # status=1: Error/failure
+            # status=2: Partial success (random seating intermediate notification)
+
+            if str(status) == "2":
+                # Partial reservation notification (random seating)
+                logger.info(f"Partial reservation notification for chat_id={chat_id}")
+                # Message already sent above, no further action needed
+                # User will send payment confirmation which will be handled by POST webhook
+                return make_response("OK")
 
             # If reservation successful (status == 0)
             if str(status) == "0":

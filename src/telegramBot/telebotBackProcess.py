@@ -143,6 +143,13 @@ class BackgroundReservationProcess:
 
             logger.info("Login successful, starting reservation loop...")
 
+            # Check seat strategy
+            if self.seat_strategy == "random":
+                # Random seating: reserve one seat at a time with payment confirmation
+                self._run_random_reservation()
+                return
+
+            # Consecutive seating: original logic
             # Search and reserve
             reservation = None
             try:
@@ -442,6 +449,214 @@ class BackgroundReservationProcess:
             logger.error(f"Failed to connect to main app for callback: {e}")
         except Exception as e:
             logger.error(f"Unexpected error sending callback: {e}", exc_info=True)
+
+    def _run_random_reservation(self):
+        """
+        Run random seating reservation: one seat at a time with payment confirmation.
+
+        Flow for each seat:
+        1. Search and reserve one seat
+        2. Send notification to user
+        3. Wait for payment confirmation (up to 10 minutes)
+        4. Proceed to next seat
+        """
+        total_seats = self.passenger_count
+        logger.info(f"=== RANDOM SEATING MODE: {total_seats} seats ===")
+
+        for seat_index in range(total_seats):
+            logger.info(f"━━━ Seat {seat_index + 1}/{total_seats} ━━━")
+
+            # Set current seat index in Redis
+            self.storage.set_current_seat_index(self.chat_id, seat_index)
+
+            # Reserve one seat
+            try:
+                reservation = self._reserve_single_seat_random(seat_index)
+            except Exception as e:
+                logger.error(f"Failed to reserve seat {seat_index + 1}: {e}", exc_info=True)
+                error_msg = f"""
+❌ {seat_index + 1}번째 좌석 예약 실패
+
+오류: {str(e)}
+
+💡 /cancel 후 다시 시도하세요.
+"""
+                self._send_callback(error_msg, status=1)
+                return
+
+            if not reservation:
+                logger.error(f"No reservation returned for seat {seat_index + 1}")
+                error_msg = f"❌ {seat_index + 1}번째 좌석 예약 실패 (결과 없음)"
+                self._send_callback(error_msg, status=1)
+                return
+
+            # Save partial reservation
+            reservation_data = {
+                "seat_index": seat_index,
+                "train_info": str(reservation),
+                "reserved_at": datetime.now().isoformat()
+            }
+            self.storage.save_partial_reservation(self.chat_id, seat_index, reservation_data)
+            logger.info(f"✅ Seat {seat_index + 1} reserved and saved to Redis")
+
+            # Send notification to user
+            message = self._build_partial_reservation_message(
+                seat_index,
+                total_seats,
+                reservation
+            )
+            self._send_callback(message, status=2)  # status=2: partial success
+
+            # Wait for payment confirmation (or timeout)
+            if seat_index < total_seats - 1:  # Not the last seat
+                logger.info(f"⏳ Waiting for payment confirmation for seat {seat_index + 1}...")
+                payment_confirmed = self.storage.wait_for_payment(
+                    self.chat_id,
+                    seat_index,
+                    timeout=600  # 10 minutes
+                )
+
+                if payment_confirmed:
+                    logger.info(f"✅ Payment confirmed for seat {seat_index + 1}")
+                    confirm_msg = f"""
+✅ {seat_index + 1}번째 좌석 결제 확인!
+
+다음 좌석 예약을 시작합니다...
+"""
+                    self._send_callback(confirm_msg, status=2)
+                else:
+                    logger.warning(f"⏱ Payment timeout for seat {seat_index + 1}")
+                    timeout_msg = f"""
+⏱ {seat_index + 1}번째 좌석 결제 시간 초과
+
+10분이 지났습니다. 다음 좌석 예약을 진행합니다.
+
+⚠️ 미결제 좌석은 자동 취소될 수 있으니 빠르게 결제해주세요!
+"""
+                    self._send_callback(timeout_msg, status=2)
+
+                # Brief pause before next reservation
+                logger.info("Waiting 3 seconds before next reservation...")
+                time.sleep(3)
+
+        # All seats reserved!
+        self.storage.set_current_seat_index(self.chat_id, None)  # Clear index
+        all_reservations = self.storage.get_partial_reservations(self.chat_id)
+
+        final_message = self._build_final_random_message(all_reservations, total_seats)
+        self._send_callback(final_message, status=0)  # status=0: complete success
+
+        logger.info(f"🎉 All {total_seats} seats reserved successfully!")
+
+    def _reserve_single_seat_random(self, seat_index: int):
+        """
+        Reserve a single seat for random allocation.
+
+        Args:
+            seat_index: Index of the seat being reserved (0-based)
+
+        Returns:
+            Reservation object if successful
+
+        Raises:
+            DuplicateReservationError: If duplicate detected (shouldn't happen in random)
+            Exception: If reservation fails
+        """
+        logger.info(f"Searching for seat {seat_index + 1}...")
+
+        attempts = 0
+        max_attempts = None  # Infinite
+
+        while True:
+            attempts += 1
+            if max_attempts and attempts > max_attempts:
+                logger.error(f"Max attempts reached for seat {seat_index + 1}")
+                return None
+
+            # Search for trains (single passenger)
+            trains = self.korail.search_trains(
+                dep_date=self.dep_date,
+                src_locate=self.src_locate,
+                dst_locate=self.dst_locate,
+                dep_time=self.dep_time,
+                max_dep_time=self.max_dep_time,
+                train_type=self.train_type,
+                passenger_count=1  # Single seat
+            )
+
+            if not trains:
+                logger.debug(f"No trains found (attempt #{attempts})")
+                time.sleep(self.korail._search_interval)
+                continue
+
+            # Try to reserve
+            for train in trains:
+                logger.info(f"Found train: {train}, attempting reservation...")
+
+                reservation = self.korail.reserve_train(
+                    train,
+                    option=self.reserve_option,
+                    passenger_count=1
+                )
+
+                if reservation == "DUPLICATE":
+                    # Should not happen in random seating (each seat is separate)
+                    logger.error(f"Unexpected duplicate for seat {seat_index + 1}")
+                    raise DuplicateReservationError("Duplicate in random seating")
+                elif reservation:
+                    logger.info(f"✅ Seat {seat_index + 1} reserved after {attempts} attempts")
+                    return reservation
+                else:
+                    logger.debug("Reservation failed (sold out), continuing...")
+
+            # Wait before retry
+            time.sleep(self.korail._search_interval)
+
+    def _build_partial_reservation_message(self, seat_index: int, total_seats: int, reservation) -> str:
+        """Build message for partial reservation success."""
+        return f"""
+🎉 {seat_index + 1}/{total_seats}번째 좌석 예약 성공!
+
+━━━━━━━━━━━━━━━━━━━━
+{reservation}
+━━━━━━━━━━━━━━━━━━━━
+
+⚠️ 중요: 10분 내 결제를 완료하세요!
+🔗 결제 링크: {settings.KORAIL_PAYMENT_URL}
+
+✅ 결제 완료 후 아래 메시지를 보내주세요:
+   "결제완료" 또는 "완료"
+
+📌 결제 확인되면 즉시 {seat_index + 2}번째 좌석 예약을 시작합니다!
+
+⏱ 10분 후 자동으로 다음 예약을 진행합니다.
+"""
+
+    def _build_final_random_message(self, all_reservations: list, total_seats: int) -> str:
+        """Build final message for all random reservations complete."""
+        reservation_details = "\n".join([
+            f"좌석 {i+1}: {r.get('train_info', 'N/A')}"
+            for i, r in enumerate(all_reservations)
+        ])
+
+        return f"""
+🎉🎉 모든 좌석 예약 완료! 🎉🎉
+
+총 {total_seats}명의 좌석이 개별적으로 예약되었습니다.
+(랜덤 배치: 좌석이 떨어져 있을 수 있습니다)
+
+━━━━━━━━━━━━━━━━━━━━
+{reservation_details}
+━━━━━━━━━━━━━━━━━━━━
+
+⚠️ 중요 안내:
+• 모든 좌석을 {settings.PAYMENT_TIMEOUT_MINUTES}분 내 결제해야 합니다!
+• 미결제 시 자동 취소됩니다!
+
+🔗 결제 링크: {settings.KORAIL_PAYMENT_URL}
+
+✅ 축하합니다! 🎊
+"""
 
 
 if __name__ == "__main__":
