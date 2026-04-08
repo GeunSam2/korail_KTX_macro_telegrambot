@@ -389,8 +389,12 @@ class BackgroundReservationProcess:
             # Get existing status or create new
             multi_status = self.storage.get_multi_reservation_status(self.chat_id)
 
-            if not multi_status:
-                # First seat - create new MultiReservationStatus
+            if not multi_status or seat_index == 0:
+                # First seat - delete any old status and create fresh one
+                if seat_index == 0 and multi_status:
+                    logger.info(f"Deleting old MultiReservationStatus for chat_id={self.chat_id}")
+                    self.storage.delete_multi_reservation_status(self.chat_id)
+
                 logger.info(f"Creating new MultiReservationStatus for chat_id={self.chat_id}")
                 multi_status = MultiReservationStatus(
                     chat_id=int(self.chat_id),
