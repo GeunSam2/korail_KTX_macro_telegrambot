@@ -133,8 +133,9 @@ class TelegramWebhook(Resource):
                 # Mark payment ready for background process
                 self.storage.mark_payment_ready(chat_id, current_seat)
 
-                # Stop multi-reservation reminders (will auto-proceed to next seat)
-                self.multi_reminder.stop_reminders(chat_id, manual=True)
+                # DON'T stop reminders - they should continue running for remaining seats
+                # The reminder service will automatically update when new seats are added
+                logger.info(f"Payment confirmed, reminders will continue for remaining seats")
 
                 # Send confirmation
                 self.telegram.send_message(

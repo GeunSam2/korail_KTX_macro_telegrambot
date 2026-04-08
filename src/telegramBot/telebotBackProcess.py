@@ -563,10 +563,8 @@ class BackgroundReservationProcess:
             # Create or update MultiReservationStatus for reminder service
             self._update_multi_reservation_status(seat_index, reservation, total_seats)
 
-            # Start reminder service for this seat
-            # This will send periodic payment reminders to the user
-            logger.info(f"Starting multi-reservation reminders for seat {seat_index + 1}")
-            self.multi_reminder.start_reminders(int(self.chat_id))
+            # NOTE: Don't start reminder service here (subprocess doesn't share memory with main app)
+            # Reminder will be started by main app when it receives the callback (status=2)
 
             # NOW set current seat index for payment waiting
             # This prevents "결제 대기중" message before reservation succeeds
