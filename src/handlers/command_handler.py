@@ -79,8 +79,23 @@ class CommandHandler:
             session.reset()
             self.storage.save_user_session(session)
 
+        # Clear multi-reservation status (for random seating)
+        self.storage.delete_multi_reservation_status(chat_id)
+        logger.debug(f"Cleared multi-reservation status for chat_id={chat_id}")
+
+        # Clear payment status and deactivate reminders
+        payment_status = self.storage.get_payment_status(chat_id)
+        if payment_status:
+            payment_status.completed = True
+            payment_status.reminder_active = False
+            self.storage.save_payment_status(payment_status)
+            logger.debug(f"Cleared payment status for chat_id={chat_id}")
+
         # Clear admin password waiting state if any
         self.storage.set_waiting_for_admin_password(chat_id, False)
+
+        # Send cancellation message
+        self.telegram.send_message(chat_id, "✅ 예약이 취소되었습니다.")
 
 
     def handle_subscribe(self, chat_id: int) -> None:
