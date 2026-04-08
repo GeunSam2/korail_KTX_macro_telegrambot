@@ -267,7 +267,16 @@ class CommandHandler:
             command: Unknown command text
         """
         logger.warning(f"Unknown command '{command}' from chat_id={chat_id}")
-        self.telegram.send_message(chat_id, "잘못된 명령어 입니다.")
+        self.telegram.send_message(
+            chat_id,
+            f"알 수 없는 명령어입니다: {command}\n\n"
+            f"📌 사용 가능한 명령어:\n"
+            f"/start - 예약 시작\n"
+            f"/cancel - 예약 취소\n"
+            f"/status - 상태 확인\n"
+            f"/help - 도움말\n\n"
+            f"🔧 관리자 명령어는 별도로 문의하세요."
+        )
 
     def is_command(self, text: str) -> bool:
         """
@@ -320,11 +329,11 @@ class CommandHandler:
             self._handle_admin_command(chat_id, lambda cid: self.handle_broadcast(cid, args), f"/broadcast {args}")
         elif command == "/flushredis":
             self._handle_admin_command(chat_id, self.handle_flush_redis, "/flushredis")
-        # Debug commands - for all users
+        # Debug commands - admin only
         elif command == "/debug_on":
-            self.handle_debug_on(chat_id)
+            self._handle_admin_command(chat_id, self.handle_debug_on, "/debug_on")
         elif command == "/debug_off":
-            self.handle_debug_off(chat_id)
+            self._handle_admin_command(chat_id, self.handle_debug_off, "/debug_off")
         else:
             self.handle_unknown_command(chat_id, command)
 
