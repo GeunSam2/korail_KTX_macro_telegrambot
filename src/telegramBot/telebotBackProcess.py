@@ -601,8 +601,8 @@ class BackgroundReservationProcess:
                 continue
 
             # Try to reserve
-            for train in trains:
-                logger.info(f"Found train: {train}, attempting reservation...")
+            for idx, train in enumerate(trains, 1):
+                logger.info(f"🚂 Trying train {idx}/{len(trains)}: {train}")
 
                 reservation = self.korail.reserve_train(
                     train,
@@ -612,13 +612,19 @@ class BackgroundReservationProcess:
 
                 if reservation == "DUPLICATE":
                     # Should not happen in random seating (each seat is separate)
-                    logger.error(f"Unexpected duplicate for seat {seat_index + 1}")
+                    logger.error(f"❌ Unexpected duplicate for seat {seat_index + 1}")
                     raise DuplicateReservationError("Duplicate in random seating")
                 elif reservation:
-                    logger.info(f"✅ Seat {seat_index + 1} reserved after {attempts} attempts")
+                    logger.info(f"✅ Seat {seat_index + 1} reserved after {attempts} search attempts!")
+                    logger.info(f"🎉 Successfully reserved: {reservation}")
                     return reservation
                 else:
-                    logger.debug("Reservation failed (sold out), continuing...")
+                    logger.info(f"  ❌ Train {idx} failed (sold out or unavailable)")
+                    logger.info(f"  → Trying next train...")
+
+            # All trains in this search failed
+            logger.info(f"⚠️ All {len(trains)} trains sold out in attempt #{attempts}")
+            logger.info(f"💤 Waiting {self.korail._search_interval}s before retry...")
 
             # Wait before retry
             time.sleep(self.korail._search_interval)

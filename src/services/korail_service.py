@@ -84,6 +84,11 @@ class KorailService:
             # Create passenger list
             passengers = [AdultPassenger(passenger_count)]
 
+            logger.debug(
+                f"🔍 Searching: {dep_date} {src_locate}→{dst_locate} "
+                f"time={dep_time}~{max_dep_time} type={train_type} passengers={passenger_count}"
+            )
+
             trains = self._korail_instance.search_train(
                 src_locate,
                 dst_locate,
@@ -93,30 +98,52 @@ class KorailService:
                 passengers=passengers
             )
 
+            logger.info(f"📋 Korail API returned {len(trains) if trains else 0} trains")
+
+            # Log each train found with seat availability
+            if trains:
+                for i, train in enumerate(trains, 1):
+                    # Try to extract seat info from train object
+                    train_str = str(train)
+                    logger.info(f"  Train #{i}: {train_str}")
+
+                    # Check if train has seat availability info
+                    if hasattr(train, 'seat_available'):
+                        logger.info(f"    Seats available: {train.seat_available}")
+                    if hasattr(train, 'general_seat'):
+                        logger.info(f"    General seats: {train.general_seat}")
+                    if hasattr(train, 'special_seat'):
+                        logger.info(f"    Special seats: {train.special_seat}")
+
             # Filter by max departure time
             if trains and max_dep_time != "2400":
                 filtered_trains = []
                 max_time = int(max_dep_time)
 
+                logger.debug(f"🔧 Applying max_dep_time filter: {max_dep_time}")
+
                 for train in trains:
                     dep_time_int = self._extract_departure_time(train)
                     if dep_time_int > 0 and dep_time_int < max_time:
                         filtered_trains.append(train)
+                        logger.debug(f"  ✅ Kept: {dep_time_int} < {max_time}")
+                    else:
+                        logger.debug(f"  ❌ Filtered out: {dep_time_int} >= {max_time}")
 
                 trains = filtered_trains
-                logger.debug(f"Filtered to {len(trains)} trains by max_dep_time={max_dep_time}")
+                logger.info(f"📊 After filtering: {len(trains)} trains remain")
 
             logger.info(
-                f"Found {len(trains)} trains from {src_locate} to {dst_locate} "
-                f"on {dep_date} at {dep_time} for {passenger_count} passengers"
+                f"✅ Search complete: {len(trains)} trains available "
+                f"({src_locate}→{dst_locate} on {dep_date})"
             )
             return trains
 
         except NoResultsError:
-            logger.debug(f"No trains found for search criteria")
+            logger.info(f"ℹ️ No trains found for search criteria (NoResultsError)")
             return []
         except Exception as e:
-            logger.error(f"Error searching trains: {e}")
+            logger.error(f"❌ Error searching trains: {e}", exc_info=True)
             return []
 
     def reserve_train(
@@ -144,26 +171,43 @@ class KorailService:
             # Create passenger list
             passengers = [AdultPassenger(passenger_count)]
 
-            logger.info(f"Attempting to reserve train: {train} for {passenger_count} passengers")
+            logger.info(f"🎫 Attempting reservation:")
+            logger.info(f"  Train: {train}")
+            logger.info(f"  Option: {option}")
+            logger.info(f"  Passengers: {passenger_count}")
+
             reservation = self._korail_instance.reserve(train, passengers=passengers, option=option)
 
             if reservation:
-                logger.info(f"Successfully reserved train: {reservation}")
-            return reservation
+                logger.info(f"🎉 RESERVATION SUCCESS!")
+                logger.info(f"  Reservation details: {reservation}")
+                if hasattr(reservation, 'rsv_id'):
+                    logger.info(f"  Reservation ID: {reservation.rsv_id}")
+                return reservation
+            else:
+                logger.warning(f"⚠️ Reservation returned None (no seats available)")
+                return None
 
-        except SoldOutError:
-            logger.debug(f"Train sold out during reservation attempt: {train}")
+        except SoldOutError as e:
+            logger.info(f"🚫 Train sold out during reservation attempt")
+            logger.info(f"  Train: {train}")
+            logger.debug(f"  SoldOutError details: {e}")
             return None
         except Exception as e:
             error_msg = str(e)
+            error_type = type(e).__name__
 
             # Check for duplicate reservation error
             if "동일한 예약 내역" in error_msg or "WRR800029" in error_msg:
                 # Return special value instead of raising exception
-                logger.warning("Duplicate reservation detected - will continue searching")
+                logger.warning(f"⚠️ Duplicate reservation detected - will continue searching")
+                logger.warning(f"  Error: {error_msg}")
                 return "DUPLICATE"
 
-            logger.error(f"Error reserving train: {error_msg}")
+            logger.error(f"❌ Reservation error ({error_type}): {error_msg}")
+            logger.error(f"  Train: {train}")
+            logger.error(f"  Option: {option}")
+            logger.error(f"  Full traceback:", exc_info=True)
             return None
 
     def search_and_reserve_loop(
@@ -233,20 +277,29 @@ class KorailService:
         attempts = 0
         duplicate_notified = False
 
+        logger.info(f"🔄 Starting consecutive seat search loop (passengers={passenger_count})")
+
         while True:
             attempts += 1
             if max_attempts and attempts > max_attempts:
-                logger.warning(f"Reached max attempts ({max_attempts}), stopping")
+                logger.warning(f"❌ Reached max attempts ({max_attempts}), stopping")
                 return None
+
+            logger.info(f"━━━ Search attempt #{attempts} ━━━")
 
             # Search for trains
             trains = self.search_trains(
                 dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count
             )
 
+            if not trains:
+                logger.info(f"No trains found in attempt #{attempts}, will retry...")
+                time.sleep(self._search_interval)
+                continue
+
             # Try to reserve each train found
-            for train in trains:
-                logger.info(f"Found train: {train}, attempting reservation...")
+            for idx, train in enumerate(trains, 1):
+                logger.info(f"🚂 Trying train {idx}/{len(trains)}")
                 reservation = self.reserve_train(train, option=reserve_option, passenger_count=passenger_count)
 
                 if reservation == "DUPLICATE":
@@ -254,16 +307,19 @@ class KorailService:
                     if not duplicate_notified:
                         # First time - raise exception to notify user once
                         duplicate_notified = True
-                        logger.warning("First duplicate detection - notifying user")
+                        logger.warning("⚠️ First duplicate detection - notifying user")
                         raise DuplicateReservationError("동일한 예약 내역이 존재합니다")
                     else:
                         # Already notified - just log and continue
-                        logger.debug("Duplicate reservation still exists, continuing search...")
+                        logger.info("⚠️ Duplicate reservation still exists, continuing search...")
                 elif reservation:
-                    logger.info(f"Reservation successful after {attempts} attempts")
+                    logger.info(f"🎉 CONSECUTIVE RESERVATION SUCCESS after {attempts} attempts!")
                     return reservation
                 else:
-                    logger.debug("Reservation failed, continuing search...")
+                    logger.info(f"  ❌ Train {idx} failed (sold out or unavailable)")
+
+            logger.info(f"⚠️ All {len(trains)} trains sold out in attempt #{attempts}")
+            logger.info(f"💤 Waiting {self._search_interval}s before retry...")
 
             # Wait before next search
             time.sleep(self._search_interval)
