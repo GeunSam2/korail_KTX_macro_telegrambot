@@ -113,6 +113,12 @@ class TelegramWebhook(Resource):
                 self.command_handler.handle_cancel(chat_id)
                 return make_response("OK")
 
+            # Route commands BEFORE checking random seating state
+            # This allows users to use /help, /status even during payment waiting
+            if self.command_handler.is_command(text):
+                self.command_handler.route_command(chat_id, text)
+                return make_response("OK")
+
             # Check if random seating in progress (waiting for payment confirmation)
             current_seat = self.storage.get_current_seat_index(chat_id)
             if current_seat is not None:  # Random seating in progress
@@ -120,10 +126,8 @@ class TelegramWebhook(Resource):
                 if text.lower() in ["결제완료", "완료", "결제 완료", "done", "paid", "complete"]:
                     logger.info(f"Payment confirmation received for seat {current_seat}, chat_id={chat_id}")
                     self.storage.mark_payment_ready(chat_id, current_seat)
-                    self.telegram.send_message(
-                        chat_id,
-                        f"✅ {current_seat + 1}번째 좌석 결제 확인!\n\n다음 좌석 예약을 진행합니다..."
-                    )
+                    # Don't send message here - background process will send it
+                    # This prevents duplicate "결제 확인!" messages
                     return make_response("OK")
                 else:
                     # User sent other message during random seating
@@ -144,10 +148,8 @@ class TelegramWebhook(Resource):
                     # Failed authentication
                     return make_response("OK")
 
-            # Route commands
-            if self.command_handler.is_command(text):
-                self.command_handler.route_command(chat_id, text)
-            elif in_progress:
+            # Handle conversation flow (non-command messages)
+            if in_progress:
                 # Handle conversation flow
                 self.conversation_handler.handle_message(chat_id, text)
             else:
