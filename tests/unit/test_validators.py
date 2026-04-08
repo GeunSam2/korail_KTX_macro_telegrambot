@@ -197,6 +197,11 @@ class TestStationNameValidation:
         valid, _ = InputValidator.validate_station_name("부산")
         assert valid is True
 
+    def test_valid_station_dongdaegu(self):
+        """Test valid station: Dongdaegu."""
+        valid, _ = InputValidator.validate_station_name("동대구")
+        assert valid is True
+
     def test_invalid_station_empty(self):
         """Test empty station name."""
         valid, error = InputValidator.validate_station_name("")
@@ -207,12 +212,28 @@ class TestStationNameValidation:
         valid, error = InputValidator.validate_station_name("서")
         assert valid is False
 
-    def test_invalid_station_non_korean(self):
-        """Test station name with non-Korean characters."""
-        valid, error = InputValidator.validate_station_name("Seoul")
-        # Note: Current validator accepts English station names too
-        # If Korean-only is required, update validator implementation
-        pass  # Skip assertion for now
+    def test_invalid_station_too_long(self):
+        """Test station name that's too long."""
+        valid, error = InputValidator.validate_station_name("가나다라마바사아자차카")
+        assert valid is False
+
+    def test_invalid_station_with_suffix(self):
+        """Test station name with '역' suffix."""
+        valid, error = InputValidator.validate_station_name("서울역")
+        assert valid is False
+        assert "역" in error
+
+    def test_invalid_station_nonexistent(self):
+        """Test nonexistent station name."""
+        valid, error = InputValidator.validate_station_name("가짜스테이션")
+        assert valid is False
+        # Either "존재하지" (not found) or some error should be present
+        assert error is not None and len(error) > 0
+
+    def test_invalid_station_whitespace(self):
+        """Test station name with only whitespace."""
+        valid, error = InputValidator.validate_station_name("   ")
+        assert valid is False
 
 
 class TestYesNoValidation:
@@ -287,6 +308,166 @@ class TestChoiceValidation:
     def test_invalid_special_option_five(self):
         """Test invalid special option: 5."""
         valid, error = InputValidator.validate_special_option_choice("5")
+        assert valid is False
+
+
+class TestPassengerCountValidation:
+    """Test passenger count validation."""
+
+    def test_valid_single_passenger(self):
+        """Test valid single passenger."""
+        valid, _ = InputValidator.validate_passenger_count("1")
+        assert valid is True
+
+    def test_valid_multiple_passengers(self):
+        """Test valid multiple passengers."""
+        valid, _ = InputValidator.validate_passenger_count("5")
+        assert valid is True
+
+    def test_valid_max_passengers(self):
+        """Test maximum passengers (9)."""
+        valid, _ = InputValidator.validate_passenger_count("9")
+        assert valid is True
+
+    def test_invalid_zero_passengers(self):
+        """Test zero passengers is invalid."""
+        valid, error = InputValidator.validate_passenger_count("0")
+        assert valid is False
+        assert "최소 1명" in error
+
+    def test_invalid_too_many_passengers(self):
+        """Test too many passengers (>9)."""
+        valid, error = InputValidator.validate_passenger_count("10")
+        assert valid is False
+        assert "최대 9명" in error
+
+    def test_invalid_negative_passengers(self):
+        """Test negative passengers."""
+        # Note: Since we check for isdigit(), "-1" will be caught as non-digit
+        valid, error = InputValidator.validate_passenger_count("-1")
+        assert valid is False
+
+    def test_invalid_non_numeric(self):
+        """Test non-numeric passenger count."""
+        valid, error = InputValidator.validate_passenger_count("abc")
+        assert valid is False
+        assert "숫자" in error
+
+    def test_invalid_empty(self):
+        """Test empty passenger count."""
+        valid, error = InputValidator.validate_passenger_count("")
+        assert valid is False
+
+
+class TestSeatStrategyValidation:
+    """Test seat strategy validation."""
+
+    def test_valid_consecutive_seats(self):
+        """Test valid consecutive seat strategy."""
+        valid, _ = InputValidator.validate_seat_strategy_choice("1")
+        assert valid is True
+
+    def test_valid_random_seats(self):
+        """Test valid random seat strategy."""
+        valid, _ = InputValidator.validate_seat_strategy_choice("2")
+        assert valid is True
+
+    def test_invalid_zero(self):
+        """Test invalid choice: 0."""
+        valid, error = InputValidator.validate_seat_strategy_choice("0")
+        assert valid is False
+
+    def test_invalid_three(self):
+        """Test invalid choice: 3."""
+        valid, error = InputValidator.validate_seat_strategy_choice("3")
+        assert valid is False
+
+    def test_invalid_non_digit(self):
+        """Test non-digit choice."""
+        valid, error = InputValidator.validate_seat_strategy_choice("a")
+        assert valid is False
+
+
+class TestPasswordValidation:
+    """Test password validation."""
+
+    def test_valid_simple_password(self):
+        """Test valid simple password."""
+        valid, _ = InputValidator.validate_password("1234")
+        assert valid is True
+
+    def test_valid_complex_password(self):
+        """Test valid complex password."""
+        valid, _ = InputValidator.validate_password("MyP@ssw0rd!")
+        assert valid is True
+
+    def test_invalid_too_short(self):
+        """Test password that's too short."""
+        valid, error = InputValidator.validate_password("123")
+        assert valid is False
+        assert "짧습니다" in error
+
+    def test_invalid_too_long(self):
+        """Test password that's too long."""
+        long_pw = "a" * 51
+        valid, error = InputValidator.validate_password(long_pw)
+        assert valid is False
+        assert "깁니다" in error
+
+    def test_invalid_empty(self):
+        """Test empty password."""
+        valid, error = InputValidator.validate_password("")
+        assert valid is False
+
+    def test_invalid_suspicious_script(self):
+        """Test password with script injection."""
+        valid, error = InputValidator.validate_password("<script>alert('xss')</script>")
+        assert valid is False
+
+    def test_invalid_suspicious_sql(self):
+        """Test password with SQL keywords."""
+        valid, error = InputValidator.validate_password("password'; DROP TABLE users--")
+        assert valid is False
+
+
+class TestPhoneNumberEnhancedValidation:
+    """Test enhanced phone number validation."""
+
+    def test_valid_with_whitespace(self):
+        """Test valid phone with leading/trailing whitespace."""
+        valid, _ = InputValidator.validate_phone_number("  010-1234-5678  ")
+        assert valid is True
+
+    def test_invalid_sql_injection(self):
+        """Test phone with SQL injection attempt."""
+        valid, error = InputValidator.validate_phone_number("010-1234-5678; DROP TABLE users")
+        assert valid is False
+
+    def test_invalid_script_injection(self):
+        """Test phone with script injection attempt."""
+        valid, error = InputValidator.validate_phone_number("<script>alert('xss')</script>")
+        assert valid is False
+
+
+class TestDateEnhancedValidation:
+    """Test enhanced date validation."""
+
+    def test_invalid_too_far_future(self):
+        """Test date that's too far in the future."""
+        far_future = (datetime.now() + timedelta(days=400)).strftime("%Y%m%d")
+        valid, error = InputValidator.validate_date(far_future)
+        assert valid is False
+        assert "기간" in error or "초과" in error
+
+    def test_valid_with_whitespace(self):
+        """Test valid date with whitespace."""
+        future_date = (datetime.now() + timedelta(days=7)).strftime("%Y%m%d")
+        valid, _ = InputValidator.validate_date(f"  {future_date}  ")
+        assert valid is True
+
+    def test_invalid_year_too_old(self):
+        """Test date with year too old."""
+        valid, error = InputValidator.validate_date("19990101")
         assert valid is False
 
 

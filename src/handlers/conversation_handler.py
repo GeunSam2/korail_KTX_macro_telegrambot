@@ -171,6 +171,12 @@ class ConversationHandler:
 
     def _handle_password_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle password input and login."""
+        # Validate password
+        is_valid, error = InputValidator.validate_password(text)
+        if not is_valid:
+            self.telegram.send_message(chat_id, error + " 다시 입력 바랍니다.")
+            return
+
         username = session.credentials.korail_id
         password = text
 
@@ -315,16 +321,14 @@ class ConversationHandler:
 
     def _handle_passenger_count_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle passenger count input."""
-        # Validate input
-        from telegramBot.messages import Messages
-        if not text.isdigit():
-            self.telegram.send_message(chat_id, Messages.ERROR_PASSENGER_COUNT_NOT_DIGIT)
+        # Validate input with enhanced validator
+        is_valid, error = InputValidator.validate_passenger_count(text)
+
+        if not is_valid:
+            self.telegram.send_message(chat_id, error)
             return
 
         count = int(text)
-        if count < 1 or count > 9:
-            self.telegram.send_message(chat_id, Messages.ERROR_PASSENGER_COUNT_RANGE)
-            return
 
         # Save passenger count
         session.train_info['passengerCount'] = count
@@ -344,9 +348,11 @@ class ConversationHandler:
 
     def _handle_seat_strategy_input(self, chat_id: int, text: str, session: UserSession) -> None:
         """Handle seat strategy selection."""
-        if text not in ["1", "2"]:
-            from telegramBot.messages import Messages
-            self.telegram.send_message(chat_id, Messages.ERROR_SEAT_STRATEGY_INVALID)
+        # Validate with enhanced validator
+        is_valid, error = InputValidator.validate_seat_strategy_choice(text)
+
+        if not is_valid:
+            self.telegram.send_message(chat_id, error)
             return
 
         strategy = "consecutive" if text == "1" else "random"
