@@ -167,6 +167,41 @@ class CommandHandler:
             # Default fun message if no message provided
             self.telegram.send_to_multiple(all_chat_ids, "앙 기모띠")
 
+    def handle_flush_redis(self, chat_id: int) -> None:
+        """
+        Handle /flushredis command (admin only).
+
+        WARNING: This will delete ALL Redis data including all user sessions,
+        running reservations, and payment statuses.
+
+        Args:
+            chat_id: Admin chat ID
+        """
+        logger.warning(f"Handling /flushredis for chat_id={chat_id}")
+
+        try:
+            # Check if storage is Redis-based
+            if not hasattr(self.storage, 'flush_all'):
+                self.telegram.send_message(
+                    chat_id,
+                    "❌ 현재 스토리지는 Redis가 아닙니다."
+                )
+                return
+
+            # Flush all data
+            deleted_count = self.storage.flush_all()
+
+            message = f"✅ Redis 메모리가 초기화되었습니다.\n삭제된 키: {deleted_count}개"
+            self.telegram.send_message(chat_id, message)
+            logger.warning(f"Redis flushed by admin chat_id={chat_id}, deleted {deleted_count} keys")
+
+        except Exception as e:
+            logger.error(f"Failed to flush Redis: {e}")
+            self.telegram.send_message(
+                chat_id,
+                f"❌ Redis 초기화 실패: {str(e)}"
+            )
+
     def handle_help(self, chat_id: int) -> None:
         """
         Handle /help command.
@@ -237,6 +272,8 @@ class CommandHandler:
             self._handle_admin_command(chat_id, self.handle_all_users, "/allusers")
         elif command == "/broadcast":
             self._handle_admin_command(chat_id, lambda cid: self.handle_broadcast(cid, args), f"/broadcast {args}")
+        elif command == "/flushredis":
+            self._handle_admin_command(chat_id, self.handle_flush_redis, "/flushredis")
         else:
             self.handle_unknown_command(chat_id, command)
 

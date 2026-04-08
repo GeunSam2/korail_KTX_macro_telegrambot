@@ -554,3 +554,28 @@ class RedisStorage(StorageInterface):
             created_at=datetime.fromisoformat(data["created_at"]),
             manually_stopped=data["manually_stopped"]
         )
+
+    # ==================== Admin Operations ====================
+
+    def flush_all(self) -> int:
+        """
+        Flush all Redis data (admin operation).
+
+        WARNING: This will delete ALL data from the Redis database.
+        Use with extreme caution.
+
+        Returns:
+            Number of keys deleted
+        """
+        try:
+            # Get count before flushing
+            key_count = self.redis.dbsize()
+
+            # Flush all data in current database
+            self.redis.flushdb()
+
+            logger.warning(f"Redis database flushed. {key_count} keys deleted.")
+            return key_count
+        except redis.RedisError as e:
+            logger.error(f"Failed to flush Redis: {e}")
+            raise

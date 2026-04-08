@@ -42,6 +42,7 @@ class Messages:
   /allusers - 전체 사용자 확인
   /cancelall - 전체 예약 취소
   /broadcast [메시지] - 공지사항 전송
+  /flushredis - Redis 메모리 초기화 (⚠️ 위험)
 
 💡 결제 알림은 예약 성공 후 아무 메시지나 입력하면 중단됩니다.
 """
