@@ -744,7 +744,7 @@ class BackgroundReservationProcess:
 {reservation}
 ━━━━━━━━━━━━━━━━━━━━
 
-⏰ 예약 후 20분 이내 결제하세요!
+⏰ 예약 후 {settings.PAYMENT_TIMEOUT_MINUTES}분 이내 결제하세요!
 🔗 결제: {settings.KORAIL_PAYMENT_URL}
 
 💡 결제 후 아무 메시지나 보내면 다음 좌석 예약이 시작됩니다.
