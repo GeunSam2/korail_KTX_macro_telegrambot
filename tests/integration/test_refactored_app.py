@@ -6,7 +6,7 @@ import pytest
 sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from config.settings import settings
-from storage import InMemoryStorage
+from storage import RedisStorage
 from services import TelegramService, KorailService, ReservationService, PaymentReminderService
 from handlers import CommandHandler, ConversationHandler
 from models import UserSession, UserProgress, UserCredentials
@@ -17,10 +17,15 @@ class TestRefactoredArchitecture:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.storage = InMemoryStorage()
+        self.storage = RedisStorage()
         self.telegram = TelegramService("test_token")
         self.reservation = ReservationService(self.storage, self.telegram)
         self.payment_reminder = PaymentReminderService(self.storage, self.telegram)
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        # Flush Redis database after each test
+        self.storage.redis.flushdb()
 
     def test_storage_user_session(self):
         """Test storage can save and retrieve user sessions."""

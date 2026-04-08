@@ -495,8 +495,7 @@ class RedisStorage(StorageInterface):
             "chat_id": status.chat_id,
             "reminder_active": status.reminder_active,
             "completed": status.completed,
-            "reserved_at": status.reserved_at.isoformat() if status.reserved_at else None,
-            "expires_at": status.expires_at.isoformat() if status.expires_at else None
+            "reservation_time": status.reservation_time.isoformat() if status.reservation_time else None
         }
 
     def _deserialize_payment_status(self, data: dict) -> PaymentStatus:
@@ -507,8 +506,7 @@ class RedisStorage(StorageInterface):
             chat_id=data["chat_id"],
             reminder_active=data["reminder_active"],
             completed=data["completed"],
-            reserved_at=datetime.fromisoformat(data["reserved_at"]) if data.get("reserved_at") else None,
-            expires_at=datetime.fromisoformat(data["expires_at"]) if data.get("expires_at") else None
+            reservation_time=datetime.fromisoformat(data["reservation_time"]) if data.get("reservation_time") else None
         )
 
     def _serialize_multi_reservation_status(self, status: MultiReservationStatus) -> dict:

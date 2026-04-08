@@ -11,9 +11,12 @@ flask-cors = "*"
 python-telegram-bot = "*"
 pyopenssl = "*"
 korail2 = {git = "https://github.com/dhfhfk/korail2.git", ref = "bypassDynapath"}
+redis = "*"
+hiredis = "*"
 
 [dev-packages]
 pytest = "*"
+testcontainers = {extras = ["redis"], version = "*"}
 
 [requires]
 python_version = "3.9"

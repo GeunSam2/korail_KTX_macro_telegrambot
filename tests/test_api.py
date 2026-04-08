@@ -9,12 +9,12 @@ import os
 # src 디렉토리를 Python 경로에 추가
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from app import application
-
 
 @pytest.fixture
 def client():
     """Flask 테스트 클라이언트 생성"""
+    # Import app here after Redis environment is set up
+    from app import application
     application.config['TESTING'] = True
     with application.test_client() as client:
         yield client
@@ -22,7 +22,8 @@ def client():
 
 def test_app_exists(client):
     """Flask 애플리케이션이 존재하는지 확인"""
-    assert application is not None
+    assert client is not None
+    assert client.application is not None
 
 
 def test_telebot_endpoint_exists(client):
