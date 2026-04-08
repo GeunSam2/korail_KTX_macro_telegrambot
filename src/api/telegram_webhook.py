@@ -94,20 +94,24 @@ class TelegramWebhook(Resource):
                     self.payment_reminder.confirm_payment(chat_id)
                     return make_response("OK")
 
-            # Check for multi-reservation reminder active state
+            # Check for multi-reservation reminder active state (no current_seat_index set)
+            # This handles the case when ALL seats are reserved but waiting for final payment
             multi_status = self.storage.get_multi_reservation_status(chat_id)
             if multi_status and multi_status.should_show_reminder():
-                # User sent any non-command message during multi-reservation reminder
-                if text and not text.startswith('/'):
-                    # Mark all as paid and stop reminders
-                    self.multi_reminder.mark_all_paid(chat_id)
+                # Check if we're NOT in middle of random seating (no current_seat_index)
+                current_seat = self.storage.get_current_seat_index(chat_id)
+                if current_seat is None:
+                    # All seats reserved, just waiting for payment confirmation
+                    if text and not text.startswith('/'):
+                        # Mark all as paid and stop reminders
+                        self.multi_reminder.mark_all_paid(chat_id)
 
-                    # Send confirmation
-                    self.telegram.send_message(
-                        chat_id,
-                        "✅ 결제 완료 확인!\n\n모든 좌석의 결제 알림이 중단되었습니다."
-                    )
-                    return make_response("OK")
+                        # Send confirmation
+                        self.telegram.send_message(
+                            chat_id,
+                            "✅ 결제 완료 확인!\n\n모든 좌석의 결제 알림이 중단되었습니다."
+                        )
+                        return make_response("OK")
 
             # Handle /cancel command first (works in any state)
             if text == "/cancel":
@@ -123,21 +127,23 @@ class TelegramWebhook(Resource):
             # Check if random seating in progress (waiting for payment confirmation)
             current_seat = self.storage.get_current_seat_index(chat_id)
             if current_seat is not None:  # Random seating in progress
-                # Check for payment confirmation keywords
-                if text.lower() in ["결제완료", "완료", "결제 완료", "done", "paid", "complete"]:
-                    logger.info(f"Payment confirmation received for seat {current_seat}, chat_id={chat_id}")
-                    self.storage.mark_payment_ready(chat_id, current_seat)
-                    # Don't send message here - background process will send it
-                    # This prevents duplicate "결제 확인!" messages
-                    return make_response("OK")
-                else:
-                    # User sent other message during random seating
-                    self.telegram.send_message(
-                        chat_id,
-                        f"⏳ {current_seat + 1}번째 좌석 결제 대기 중입니다.\n\n"
-                        f"결제 완료 후 '결제완료' 또는 '완료' 메시지를 보내주세요."
-                    )
-                    return make_response("OK")
+                # ANY message confirms payment and proceeds to next seat
+                logger.info(f"Payment confirmed for seat {current_seat} by user message, chat_id={chat_id}")
+
+                # Mark payment ready for background process
+                self.storage.mark_payment_ready(chat_id, current_seat)
+
+                # Stop multi-reservation reminders (will auto-proceed to next seat)
+                self.multi_reminder.stop_reminders(chat_id, manual=True)
+
+                # Send confirmation
+                self.telegram.send_message(
+                    chat_id,
+                    f"✅ {current_seat + 1}번째 좌석 결제 확인!\n\n"
+                    f"다음 좌석 예약을 시작합니다..."
+                )
+
+                return make_response("OK")
 
             # Check if waiting for admin password (takes priority over everything)
             if self.storage.is_waiting_for_admin_password(chat_id):

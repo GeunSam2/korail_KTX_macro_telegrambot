@@ -720,15 +720,12 @@ class BackgroundReservationProcess:
 {reservation}
 ━━━━━━━━━━━━━━━━━━━━
 
-⚠️ 중요: 10분 내 결제를 완료하세요!
-🔗 결제 링크: {settings.KORAIL_PAYMENT_URL}
+⏰ 예약 후 20분 이내 결제하세요!
+🔗 결제: {settings.KORAIL_PAYMENT_URL}
 
-✅ 결제 완료 후 아래 메시지를 보내주세요:
-   "결제완료" 또는 "완료"
+💡 결제 후 아무 메시지나 보내면 다음 좌석 예약이 시작됩니다.
 
-📌 결제 확인되면 즉시 {seat_index + 2}번째 좌석 예약을 시작합니다!
-
-⏱ 10분 후 자동으로 다음 예약을 진행합니다.
+⚠️ 10분 동안 메시지가 없으면 자동으로 다음 좌석 예약을 진행합니다.
 """
 
     def _build_final_random_message(self, all_reservations: list, total_seats: int) -> str:
