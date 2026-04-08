@@ -76,7 +76,7 @@ git push origin master
 3. ✅ 서버에 docker-compose.yml 복사
 4. ✅ 서버에 .env 파일 생성
 5. ✅ 최신 이미지 다운로드
-6. ✅ docker-compose up -d 실행
+6. ✅ docker compose up -d 실행
 
 ---
 
@@ -91,12 +91,12 @@ cd ~/korail_bot
 docker pull geunsam2/korailbot:latest
 
 # 컨테이너 재시작
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 
 # 상태 확인
-docker-compose ps
-docker-compose logs -f
+docker compose ps
+docker compose logs -f
 ```
 
 ---
@@ -109,19 +109,19 @@ docker-compose logs -f
 cd ~/korail_bot
 
 # 컨테이너 상태
-docker-compose ps
+docker compose ps
 
 # 실시간 로그
-docker-compose logs -f
+docker compose logs -f
 
 # 앱 로그만
-docker-compose logs -f app
+docker compose logs -f app
 
 # Redis 로그만
-docker-compose logs -f redis
+docker compose logs -f redis
 
 # 최근 50줄
-docker-compose logs --tail=50
+docker compose logs --tail=50
 ```
 
 ### Redis 데이터 확인
@@ -157,19 +157,19 @@ docker exec korail_redis redis-cli PING
 
 ```bash
 # 시작
-docker-compose up -d
+docker compose up -d
 
 # 중지
-docker-compose down
+docker compose down
 
 # 재시작
-docker-compose restart
+docker compose restart
 
 # 앱만 재시작
-docker-compose restart app
+docker compose restart app
 
 # Redis만 재시작
-docker-compose restart redis
+docker compose restart redis
 ```
 
 ### 데이터 관리
@@ -183,7 +183,7 @@ docker cp korail_redis:/data/dump.rdb ./backup-$(date +%Y%m%d).rdb
 docker exec korail_redis redis-cli FLUSHDB
 
 # 컨테이너 및 볼륨 완전 삭제 (주의!)
-docker-compose down -v
+docker compose down -v
 ```
 
 ### 이미지 업데이트
@@ -193,7 +193,7 @@ docker-compose down -v
 docker pull geunsam2/korailbot:latest
 
 # 기존 컨테이너 삭제 후 재시작
-docker-compose up -d --force-recreate
+docker compose up -d --force-recreate
 ```
 
 ---
@@ -204,13 +204,13 @@ docker-compose up -d --force-recreate
 
 ```bash
 # 로그 확인
-docker-compose logs app
+docker compose logs app
 
 # Redis 연결 확인
 docker exec korail_redis redis-cli PING
 
 # 환경 변수 확인
-docker-compose config
+docker compose config
 
 # 포트 충돌 확인
 sudo netstat -tlnp | grep 8000
@@ -226,14 +226,14 @@ docker exec korail_redis redis-cli INFO memory
 docker exec korail_redis redis-cli FLUSHDB
 
 # Redis 재시작
-docker-compose restart redis
+docker compose restart redis
 ```
 
 ### 컨테이너가 계속 재시작됨
 
 ```bash
 # 상세 로그 확인
-docker-compose logs --tail=100 app
+docker compose logs --tail=100 app
 
 # 컨테이너 상태 확인
 docker inspect korail_bot
@@ -312,7 +312,7 @@ sudo systemctl restart docker
 ## 📞 Support
 
 문제 발생 시:
-1. 로그 확인: `docker-compose logs -f`
+1. 로그 확인: `docker compose logs -f`
 2. Redis 상태: `docker exec korail_redis redis-cli PING`
 3. 이슈 등록: GitHub Issues
 4. 문서 참조: REDIS_MIGRATION.md

@@ -75,14 +75,14 @@ jobs:
                 docker pull geunsam2/korailbot:latest
 
                 # Stop and remove old containers
-                docker-compose down
+                docker compose down
 
                 # Start services with Docker Compose
-                docker-compose up -d
+                docker compose up -d
 
                 # Show status
                 echo "=== Docker Compose Status ==="
-                docker-compose ps
+                docker compose ps
                 echo ""
                 echo "=== Recent Logs ==="
-                docker-compose logs --tail=30
+                docker compose logs --tail=30
