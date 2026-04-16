@@ -592,17 +592,15 @@ class RedisStorage(StorageInterface):
 
     # ==================== Debug Mode Management ====================
 
-    def is_debug_mode(self, chat_id: int) -> bool:
-        """Check if debug mode is enabled for a user."""
-        key = f"debug_mode:{chat_id}"
-        return self.redis.get(key) == "1"
+    def is_debug_mode(self) -> bool:
+        """Check if global debug mode is enabled."""
+        return self.redis.get("debug_mode:global") == "1"
 
-    def set_debug_mode(self, chat_id: int, enabled: bool) -> None:
-        """Enable or disable debug mode for a user."""
-        key = f"debug_mode:{chat_id}"
+    def set_debug_mode(self, enabled: bool) -> None:
+        """Enable or disable global debug mode."""
         if enabled:
-            self.redis.set(key, "1")
-            logger.info(f"Debug mode enabled for chat_id={chat_id}")
+            self.redis.set("debug_mode:global", "1")
+            logger.info("Global debug mode enabled")
         else:
-            self.redis.delete(key)
-            logger.info(f"Debug mode disabled for chat_id={chat_id}")
+            self.redis.delete("debug_mode:global")
+            logger.info("Global debug mode disabled")

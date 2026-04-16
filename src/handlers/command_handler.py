@@ -5,7 +5,7 @@ from config.settings import settings
 from models import UserSession, UserProgress, UserCredentials
 from storage.base import StorageInterface
 from services import TelegramService, ReservationService, MessageTemplates, KorailService, PaymentReminderService
-from utils.logger import get_logger
+from utils.logger import get_logger, LoggerFactory
 
 logger = get_logger(__name__)
 
@@ -135,11 +135,13 @@ class CommandHandler:
             chat_id: Telegram chat ID
         """
         logger.info(f"Handling /debug_on for chat_id={chat_id}")
-        self.storage.set_debug_mode(chat_id, True)
+        self.storage.set_debug_mode(True)
+        LoggerFactory.set_log_level("DEBUG")
         self.telegram.send_message(
             chat_id,
             "🐛 디버그 로그가 활성화되었습니다.\n\n"
-            "예약 검색 시 상세한 로그가 표시됩니다.\n"
+            "서버 로그 레벨이 DEBUG로 전환되었습니다.\n"
+            "새로 시작하는 예약 검색부터 상세 로그가 출력됩니다.\n"
             "/debug_off로 비활성화할 수 있습니다."
         )
 
@@ -151,11 +153,12 @@ class CommandHandler:
             chat_id: Telegram chat ID
         """
         logger.info(f"Handling /debug_off for chat_id={chat_id}")
-        self.storage.set_debug_mode(chat_id, False)
+        self.storage.set_debug_mode(False)
+        LoggerFactory.set_log_level("INFO")
         self.telegram.send_message(
             chat_id,
             "✅ 디버그 로그가 비활성화되었습니다.\n\n"
-            "간단한 진행 상황만 표시됩니다."
+            "서버 로그 레벨이 INFO로 복원되었습니다."
         )
 
     def handle_cancel_all(self, chat_id: int) -> None:

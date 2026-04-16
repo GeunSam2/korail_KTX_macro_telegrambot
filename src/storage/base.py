@@ -138,3 +138,14 @@ class StorageInterface(ABC):
     def get_all_multi_reservation_statuses(self) -> List[MultiReservationStatus]:
         """Get all multi-reservation statuses."""
         pass
+
+    # Debug Mode Management
+    @abstractmethod
+    def is_debug_mode(self) -> bool:
+        """Check if global debug mode is enabled."""
+        pass
+
+    @abstractmethod
+    def set_debug_mode(self, enabled: bool) -> None:
+        """Enable or disable global debug mode."""
+        pass

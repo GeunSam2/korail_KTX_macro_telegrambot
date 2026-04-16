@@ -31,6 +31,12 @@ class LoggerFactory:
         cls._configured = True
 
     @classmethod
+    def set_log_level(cls, level: str) -> None:
+        """Dynamically change the root logger level at runtime."""
+        numeric_level = getattr(logging, level.upper(), logging.INFO)
+        logging.getLogger().setLevel(numeric_level)
+
+    @classmethod
     def get_logger(cls, name: str) -> logging.Logger:
         """
         Get a logger with the specified name.

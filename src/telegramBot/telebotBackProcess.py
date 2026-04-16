@@ -22,7 +22,7 @@ from storage.redis import RedisStorage
 from services import KorailService, TelegramService, PaymentReminderService, MultiReservationReminderService
 from services.korail_service import DuplicateReservationError
 from models import MultiReservationStatus, SingleReservationInfo, ReservationPaymentStatus
-from utils.logger import get_logger
+from utils.logger import get_logger, LoggerFactory
 
 logger = get_logger(__name__)
 
@@ -66,6 +66,11 @@ class BackgroundReservationProcess:
         self.korail = KorailService()
 
         logger.info(f"Redis storage connected: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
+
+        # Restore debug mode from Redis
+        if self.storage.is_debug_mode():
+            LoggerFactory.set_log_level("DEBUG")
+            logger.info("Debug mode restored from Redis - log level set to DEBUG")
 
         logger.info(f"========================================")
         logger.info(f"Background Process Initialized")
