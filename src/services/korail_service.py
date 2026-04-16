@@ -20,6 +20,10 @@ class KorailService:
         self._korail_instance: Optional[K2MKorail] = None
         self._logged_in = False
         self._search_interval = settings.KORAIL_SEARCH_INTERVAL
+        self._username: Optional[str] = None
+        self._password: Optional[str] = None
+        self._last_login_time: float = 0
+        self._relogin_interval: int = 30 * 60  # 30 minutes
 
         # Log class methods to verify correct version is loaded
         logger.info(f"KorailService initialized with methods: {[m for m in dir(self) if not m.startswith('_')]}")
@@ -40,6 +44,9 @@ class KorailService:
             self._logged_in = self._korail_instance.login()
 
             if self._logged_in:
+                self._username = username
+                self._password = password
+                self._last_login_time = time.time()
                 logger.info(f"Korail login successful for user: {username}")
             else:
                 logger.warning(f"Korail login failed for user: {username}")
@@ -48,6 +55,33 @@ class KorailService:
         except Exception as e:
             logger.error(f"Korail login error for user {username}: {e}")
             return False
+
+    def _relogin(self) -> bool:
+        """Attempt to re-login with stored credentials after session expiry."""
+        if not self._username or not self._password:
+            logger.error("🔒 Cannot re-login: no stored credentials")
+            return False
+
+        logger.debug("🔄 Session expired, attempting re-login...")
+        try:
+            self._korail_instance = K2MKorail(self._username, self._password, auto_login=False)
+            self._logged_in = self._korail_instance.login()
+            if self._logged_in:
+                self._last_login_time = time.time()
+                logger.debug("✅ Re-login successful")
+            else:
+                logger.error("❌ Re-login failed")
+            return self._logged_in
+        except Exception as e:
+            logger.error(f"❌ Re-login error: {e}")
+            self._logged_in = False
+            return False
+
+    def _check_session_refresh(self):
+        """Proactively re-login if session is older than the relogin interval."""
+        if self._last_login_time and (time.time() - self._last_login_time) >= self._relogin_interval:
+            logger.debug(f"🔄 Session older than {self._relogin_interval}s, proactive re-login")
+            self._relogin()
 
     def search_trains(
         self,
@@ -149,6 +183,12 @@ class KorailService:
             logger.info(f"ℹ️ No trains found for search criteria (NoResultsError)")
             return []
         except Exception as e:
+            if type(e).__name__ == 'NeedToLoginError':
+                logger.debug(f"🔒 Session expired during search, re-logging in: {e}")
+                if self._relogin():
+                    return []  # Will retry on next loop iteration
+                else:
+                    raise
             logger.error(f"❌ Error searching trains: {e}", exc_info=True)
             return []
 
@@ -209,6 +249,13 @@ class KorailService:
                 logger.warning(f"⚠️ Duplicate reservation detected - will continue searching")
                 logger.warning(f"  Error: {error_msg}")
                 return "DUPLICATE"
+
+            if error_type == 'NeedToLoginError':
+                logger.debug(f"🔒 Session expired during reservation, re-logging in: {error_msg}")
+                if self._relogin():
+                    return None  # Will retry on next loop iteration
+                else:
+                    raise
 
             logger.error(f"❌ Reservation error ({error_type}): {error_msg}")
             logger.error(f"  Train: {train}")
@@ -293,6 +340,8 @@ class KorailService:
 
             logger.info(f"━━━ Search attempt #{attempts} ━━━")
 
+            self._check_session_refresh()
+
             # Search for trains
             trains = self.search_trains(
                 dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count
@@ -357,6 +406,8 @@ class KorailService:
                 # Cancel any partial reservations
                 self._cancel_reservations(reservations)
                 return None
+
+            self._check_session_refresh()
 
             # Search for trains (search for single passenger each time)
             trains = self.search_trains(
