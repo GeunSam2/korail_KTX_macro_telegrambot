@@ -24,6 +24,7 @@ class KorailService:
         self._password: Optional[str] = None
         self._last_login_time: float = 0
         self._relogin_interval: int = 30 * 60  # 30 minutes
+        self._relogin_count: int = 0
 
         # Log class methods to verify correct version is loaded
         logger.debug(f"KorailService initialized with methods: {[m for m in dir(self) if not m.startswith('_')]}")
@@ -68,7 +69,8 @@ class KorailService:
             self._logged_in = self._korail_instance.login()
             if self._logged_in:
                 self._last_login_time = time.time()
-                logger.debug("✅ Re-login successful")
+                self._relogin_count += 1
+                logger.debug(f"✅ Re-login successful (total: {self._relogin_count})")
             else:
                 logger.error("❌ Re-login failed")
             return self._logged_in
@@ -344,7 +346,7 @@ class KorailService:
                 return None
 
             if attempts % 1000 == 0:
-                logger.info(f"📊 Search attempt #{attempts} (still searching...)")
+                logger.info(f"📊 Search attempt #{attempts} (still searching..., re-logins: {self._relogin_count})")
 
             is_summary = (attempts % 60 == 0)
 

@@ -668,7 +668,7 @@ class BackgroundReservationProcess:
                     f"좌석이 나오는 즉시 예약을 시도합니다."
                 )
                 last_notification_time = current_time
-                logger.info(f"📢 Progress notification sent: {attempts} attempts, {elapsed_minutes} minutes")
+                logger.info(f"📢 Progress notification sent: {attempts} attempts, {elapsed_minutes} minutes, re-logins: {self.korail._relogin_count}")
 
             is_summary = (attempts % 60 == 0)
 
