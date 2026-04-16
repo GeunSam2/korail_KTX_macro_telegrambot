@@ -28,6 +28,11 @@ class LoggerFactory:
                 logging.StreamHandler(sys.stdout)
             ]
         )
+
+        # Suppress noisy third-party library logs
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("requests").setLevel(logging.WARNING)
+
         cls._configured = True
 
     @classmethod
