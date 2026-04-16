@@ -645,8 +645,6 @@ class BackgroundReservationProcess:
 
         attempts = 0
         max_attempts = None  # Infinite
-        start_time = time.time()
-        last_notification_time = start_time
         duplicate_notified = False  # Track if we already notified about duplicate
 
         while True:
@@ -654,21 +652,6 @@ class BackgroundReservationProcess:
             if max_attempts and attempts > max_attempts:
                 logger.error(f"Max attempts reached for seat {seat_index + 1}")
                 return None
-
-            # Send progress notification every 60 seconds
-            current_time = time.time()
-            if current_time - last_notification_time >= 60:
-                elapsed_seconds = int(current_time - start_time)
-                elapsed_minutes = elapsed_seconds // 60
-                self.telegram.send_message(
-                    self.chat_id,
-                    f"🔄 예약 검색 중... ({seat_index + 1}번째 좌석)\n\n"
-                    f"시도 횟수: {attempts}회\n"
-                    f"경과 시간: 약 {elapsed_minutes}분\n\n"
-                    f"좌석이 나오는 즉시 예약을 시도합니다."
-                )
-                last_notification_time = current_time
-                logger.info(f"📢 Progress notification sent: {attempts} attempts, {elapsed_minutes} minutes, re-logins: {self.korail._relogin_count}")
 
             is_summary = (attempts % 60 == 0)
 
