@@ -91,7 +91,8 @@ class KorailService:
         dep_time: str = "000000",
         max_dep_time: str = "2400",
         train_type: TrainType = TrainType.KTX,
-        passenger_count: int = 1
+        passenger_count: int = 1,
+        verbose: bool = True
     ) -> List:
         """
         Search for available trains.
@@ -118,16 +119,17 @@ class KorailService:
             # Create passenger list
             passengers = [AdultPassenger(passenger_count)]
 
-            logger.debug(
-                f"🔍 Searching trains with parameters:"
-            )
-            logger.debug(f"  dep_date: {dep_date} (type: {type(dep_date).__name__})")
-            logger.debug(f"  src_locate: '{src_locate}' (type: {type(src_locate).__name__})")
-            logger.debug(f"  dst_locate: '{dst_locate}' (type: {type(dst_locate).__name__})")
-            logger.debug(f"  dep_time: {dep_time} (type: {type(dep_time).__name__})")
-            logger.debug(f"  train_type: {train_type}")
-            logger.debug(f"  passengers: {passengers} (count: {passenger_count})")
-            logger.debug(f"  max_dep_time: {max_dep_time}")
+            if verbose:
+                logger.debug(
+                    f"🔍 Searching trains with parameters:"
+                )
+                logger.debug(f"  dep_date: {dep_date} (type: {type(dep_date).__name__})")
+                logger.debug(f"  src_locate: '{src_locate}' (type: {type(src_locate).__name__})")
+                logger.debug(f"  dst_locate: '{dst_locate}' (type: {type(dst_locate).__name__})")
+                logger.debug(f"  dep_time: {dep_time} (type: {type(dep_time).__name__})")
+                logger.debug(f"  train_type: {train_type}")
+                logger.debug(f"  passengers: {passengers} (count: {passenger_count})")
+                logger.debug(f"  max_dep_time: {max_dep_time}")
 
             trains = self._korail_instance.search_train(
                 src_locate,
@@ -138,49 +140,54 @@ class KorailService:
                 passengers=passengers
             )
 
-            logger.debug(f"📋 Korail API returned {len(trains) if trains else 0} trains")
+            if verbose:
+                logger.debug(f"📋 Korail API returned {len(trains) if trains else 0} trains")
 
-            # Log each train found with seat availability
-            if trains:
-                for i, train in enumerate(trains, 1):
-                    # Try to extract seat info from train object
-                    train_str = str(train)
-                    logger.debug(f"  Train #{i}: {train_str}")
+                # Log each train found with seat availability
+                if trains:
+                    for i, train in enumerate(trains, 1):
+                        train_str = str(train)
+                        logger.debug(f"  Train #{i}: {train_str}")
 
-                    # Check if train has seat availability info
-                    if hasattr(train, 'seat_available'):
-                        logger.debug(f"    Seats available: {train.seat_available}")
-                    if hasattr(train, 'general_seat'):
-                        logger.debug(f"    General seats: {train.general_seat}")
-                    if hasattr(train, 'special_seat'):
-                        logger.debug(f"    Special seats: {train.special_seat}")
+                        if hasattr(train, 'seat_available'):
+                            logger.debug(f"    Seats available: {train.seat_available}")
+                        if hasattr(train, 'general_seat'):
+                            logger.debug(f"    General seats: {train.general_seat}")
+                        if hasattr(train, 'special_seat'):
+                            logger.debug(f"    Special seats: {train.special_seat}")
 
             # Filter by max departure time
             if trains and max_dep_time != "2400":
                 filtered_trains = []
                 max_time = int(max_dep_time)
 
-                logger.debug(f"🔧 Applying max_dep_time filter: {max_dep_time}")
+                if verbose:
+                    logger.debug(f"🔧 Applying max_dep_time filter: {max_dep_time}")
 
                 for train in trains:
                     dep_time_int = self._extract_departure_time(train)
                     if dep_time_int > 0 and dep_time_int < max_time:
                         filtered_trains.append(train)
-                        logger.debug(f"  ✅ Kept: {dep_time_int} < {max_time}")
+                        if verbose:
+                            logger.debug(f"  ✅ Kept: {dep_time_int} < {max_time}")
                     else:
-                        logger.debug(f"  ❌ Filtered out: {dep_time_int} >= {max_time}")
+                        if verbose:
+                            logger.debug(f"  ❌ Filtered out: {dep_time_int} >= {max_time}")
 
                 trains = filtered_trains
-                logger.debug(f"📊 After filtering: {len(trains)} trains remain")
+                if verbose:
+                    logger.debug(f"📊 After filtering: {len(trains)} trains remain")
 
-            logger.debug(
-                f"✅ Search complete: {len(trains)} trains available "
-                f"({src_locate}→{dst_locate} on {dep_date})"
-            )
+            if verbose:
+                logger.debug(
+                    f"✅ Search complete: {len(trains)} trains available "
+                    f"({src_locate}→{dst_locate} on {dep_date})"
+                )
             return trains
 
         except NoResultsError:
-            logger.debug(f"No trains found for search criteria (NoResultsError)")
+            if verbose:
+                logger.debug(f"No trains found for search criteria (NoResultsError)")
             return []
         except Exception as e:
             if type(e).__name__ == 'NeedToLoginError':
@@ -339,21 +346,26 @@ class KorailService:
             if attempts % 1000 == 0:
                 logger.info(f"📊 Search attempt #{attempts} (still searching...)")
 
-            logger.debug(f"━━━ Search attempt #{attempts} ━━━")
+            is_summary = (attempts % 60 == 0)
+
+            if is_summary:
+                logger.debug(f"━━━ Search attempt #{attempts} ━━━")
 
             self._check_session_refresh()
 
             # Search for trains
             trains = self.search_trains(
-                dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count
+                dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count,
+                verbose=is_summary
             )
 
             if not trains:
-                logger.debug(f"No trains found in attempt #{attempts}, will retry...")
+                if is_summary:
+                    logger.debug(f"📊 Attempt #{attempts}: no trains found, retrying...")
                 time.sleep(self._search_interval)
                 continue
 
-            # Try to reserve each train found
+            # Try to reserve each train found (trains found = rare, always log)
             for idx, train in enumerate(trains, 1):
                 logger.debug(f"🚂 Trying train {idx}/{len(trains)}")
                 reservation = self.reserve_train(train, option=reserve_option, passenger_count=passenger_count)
@@ -407,14 +419,23 @@ class KorailService:
                 self._cancel_reservations(reservations)
                 return None
 
+            is_summary = (attempts % 60 == 0)
+
             self._check_session_refresh()
 
             # Search for trains (search for single passenger each time)
             trains = self.search_trains(
-                dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count=1
+                dep_date, src_locate, dst_locate, dep_time, max_dep_time, train_type, passenger_count=1,
+                verbose=is_summary
             )
 
-            # Try to reserve each train found
+            if not trains:
+                if is_summary:
+                    logger.debug(f"📊 Attempt #{attempts}: no trains found, retrying...")
+                time.sleep(self._search_interval)
+                continue
+
+            # Try to reserve each train found (trains found = rare, always log)
             for train in trains:
                 remaining = target_count - len(reservations)
                 logger.debug(

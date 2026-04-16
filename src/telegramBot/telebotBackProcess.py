@@ -670,7 +670,10 @@ class BackgroundReservationProcess:
                 last_notification_time = current_time
                 logger.info(f"📢 Progress notification sent: {attempts} attempts, {elapsed_minutes} minutes")
 
-            logger.debug(f"🔄 Search attempt #{attempts} for seat {seat_index + 1}")
+            is_summary = (attempts % 60 == 0)
+
+            if is_summary:
+                logger.debug(f"🔄 Search attempt #{attempts} for seat {seat_index + 1}")
 
             # Search for trains (single passenger)
             try:
@@ -681,20 +684,23 @@ class BackgroundReservationProcess:
                     dep_time=self.dep_time,
                     max_dep_time=self.max_dep_time,
                     train_type=self.train_type,
-                    passenger_count=1  # Single seat
+                    passenger_count=1,  # Single seat
+                    verbose=is_summary
                 )
-                logger.info(f"✅ Search completed: found {len(trains) if trains else 0} trains")
+                if trains:
+                    logger.debug(f"✅ Search completed: found {len(trains)} trains")
+                elif is_summary:
+                    logger.debug(f"📊 Attempt #{attempts}: no trains found, retrying...")
             except Exception as e:
                 logger.error(f"❌ Search failed (attempt #{attempts}): {e}", exc_info=True)
                 time.sleep(self.korail._search_interval)
                 continue
 
             if not trains:
-                logger.info(f"No trains available (attempt #{attempts}), retrying in {self.korail._search_interval}s...")
                 time.sleep(self.korail._search_interval)
                 continue
 
-            # Try to reserve
+            # Try to reserve (trains found = rare, always log)
             duplicate_found = False
             for idx, train in enumerate(trains, 1):
                 logger.info(f"🚂 Trying train {idx}/{len(trains)}: {train}")
@@ -733,15 +739,13 @@ class BackgroundReservationProcess:
                     return reservation
                 else:
                     logger.info(f"  ❌ Train {idx} failed (sold out or unavailable)")
-                    logger.info(f"  → Trying next train...")
 
             # All trains in this search failed
             if duplicate_found:
                 logger.info(f"⚠️ Duplicate reservation detected, waiting 10s before retry...")
                 time.sleep(10)  # Wait 10 seconds when duplicate found
             else:
-                logger.info(f"⚠️ All {len(trains)} trains sold out in attempt #{attempts}")
-                logger.info(f"💤 Waiting {self.korail._search_interval}s before retry...")
+                logger.debug(f"All {len(trains)} trains sold out in attempt #{attempts}")
                 time.sleep(self.korail._search_interval)
 
     def _build_partial_reservation_message(self, seat_index: int, total_seats: int, reservation) -> str:
