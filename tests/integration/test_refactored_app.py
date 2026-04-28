@@ -1,9 +1,5 @@
 """Integration tests for refactored application."""
-import sys
 import pytest
-
-# Add src to path
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from config.settings import settings
 from storage import RedisStorage

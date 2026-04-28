@@ -3,12 +3,9 @@ Integration tests for reservation service.
 
 Tests process management, cancellation, and state management.
 """
-import sys
 import pytest
 import time
 from unittest.mock import Mock, patch
-
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from storage import RedisStorage
 from services import TelegramService, ReservationService

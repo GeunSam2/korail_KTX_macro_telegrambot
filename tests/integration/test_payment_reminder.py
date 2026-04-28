@@ -3,14 +3,11 @@ Integration tests for payment reminder service.
 
 Tests payment reminder timing, timeout, and confirmation.
 """
-import sys
 import pytest
 import time
 from unittest.mock import Mock, patch, call
 from freezegun import freeze_time
 from datetime import datetime, timedelta
-
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from storage import RedisStorage
 from services import TelegramService, PaymentReminderService

@@ -3,11 +3,8 @@ Comprehensive tests for input validators.
 
 Tests all edge cases, boundary conditions, and error handling.
 """
-import sys
 import pytest
 from datetime import datetime, timedelta
-
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from utils.validators import InputValidator
 

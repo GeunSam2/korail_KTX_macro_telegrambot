@@ -3,12 +3,9 @@ End-to-end tests for complete reservation flows.
 
 Tests the entire user journey from start to reservation completion.
 """
-import sys
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
-
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from storage import RedisStorage
 from services import TelegramService, ReservationService, PaymentReminderService

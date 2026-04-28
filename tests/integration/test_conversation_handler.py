@@ -3,11 +3,8 @@ Integration tests for conversation handler.
 
 Tests the multi-step conversation flow for train reservation.
 """
-import sys
 import pytest
 from unittest.mock import Mock, patch
-
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from storage import RedisStorage
 from services import TelegramService, ReservationService

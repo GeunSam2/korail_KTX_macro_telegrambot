@@ -9,8 +9,6 @@ class Messages:
     """봇 메시지 템플릿 클래스"""
 
     # ========== 시작 및 안내 메시지 ==========
-    INIT = "코레일 예약봇입니다.\n시작하시려면 /start를 입력해주세요."
-
     WELCOME = """🚄 근삼 코레일 봇을 이용해 주셔서 감사합니다.
 
 본 프로그램은 매진 열차 자동 예약을 위한 서비스입니다.
@@ -252,19 +250,10 @@ class Messages:
 
 예약을 취소합니다.
 """
-    ERROR_BUSY = "⏳ 현재 다른 사용자가 이용 중입니다.\n잠시 후 다시 시도하거나 관리자에게 문의하세요."
-
     # ========== 취소 및 완료 메시지 ==========
     CANCELLED = "✅ 예약이 취소되었습니다."
     CANCELLED_BY_USER = "🚫 예약을 취소합니다."
-    CANCELLED_TYPO = "✅ 예약이 취소되었습니다."
     CANCEL_START_CONFIRMATION = "🚫 예매 진행을 취소합니다."
-
-    PAYMENT_CONFIRMED = """✅ 결제 완료 확인!
-
-리마인더 알림이 중단됩니다.
-즐거운 여행 되세요! 🚄
-"""
 
     PAYMENT_REMINDER_STOPPED = """✅ 결제 리마인더가 중단되었습니다.
 
@@ -280,48 +269,10 @@ class Messages:
 💡 코레일 사이트에서 예약 상태를 확인해주세요.
 """
 
-    # ========== 구독 관련 메시지 ==========
-    SUBSCRIBE_SUCCESS = "🔔 알림 구독이 완료되었습니다."
-    SUBSCRIBE_ALREADY = "ℹ️ 이미 알림을 구독 중입니다."
-
     # ========== 관리자 메시지 ==========
-    ADMIN_FORCE_CANCEL = "⚠️ 관리자에 의해 예약이 강제 종료되었습니다.\n문의사항은 관리자에게 연락하세요."
-    ADMIN_BROADCAST_DEFAULT = "📢 테스트 메시지입니다."
     ADMIN_AUTH_REQUIRED = "🔐 관리자 인증이 필요합니다.\n관리자 비밀번호를 입력해주세요."
     ADMIN_AUTH_SUCCESS = "✅ 관리자 인증 성공!"
     ADMIN_AUTH_FAILED = "❌ 관리자 인증 실패\n올바른 비밀번호를 입력해주세요."
-
-    @staticmethod
-    def status_info(count, users):
-        """예약 상태 정보"""
-        if count == 0:
-            return "ℹ️ 현재 진행 중인 예약이 없습니다."
-        return f"📊 현재 {count}개의 예약이 진행 중입니다.\n👥 이용 중인 사용자: {users}"
-
-    @staticmethod
-    def all_users_info(count, users):
-        """전체 유저 정보"""
-        return f"👥 전체 사용자: {count}명\n📋 목록: {users}"
-
-    @staticmethod
-    def admin_cancelled_all(count, users):
-        """전체 예약 취소 (관리자용)"""
-        return f"🛑 전체 예약 종료 완료\n\n종료된 예약: {count}개\n영향받은 사용자: {users}"
-
-    @staticmethod
-    def subscriber_not_allowed(phone):
-        """구독자 목록에 없음 (관리자 알림용)"""
-        return f"⚠️ 미등록 사용자 접근 시도\n전화번호: {phone}"
-
-    @staticmethod
-    def subscriber_started(username, src, dst, date):
-        """예약 시작 (구독자 알림용)"""
-        return f"🎯 새로운 예약 시작\n\n사용자: {username}\n구간: {src} → {dst}\n날짜: {date}"
-
-    @staticmethod
-    def subscriber_ended(username):
-        """예약 종료 (구독자 알림용)"""
-        return f"✅ 예약 종료\n사용자: {username}"
 
     # ========== Backward Compatibility Methods for MessageTemplates ==========
     # These methods provide compatibility with the old MessageTemplates interface
@@ -360,12 +311,6 @@ class Messages:
     def request_arrival_station():
         """Request arrival station after departure station input (compatibility method)"""
         return Messages.REQUEST_SRC_STATION
-
-    @staticmethod
-    def request_departure_date():
-        """Request departure date (deprecated - use request_departure_station)"""
-        # This method name is misleading but kept for backward compatibility
-        return Messages.REQUEST_DATE
 
     @staticmethod
     def not_in_allow_list():

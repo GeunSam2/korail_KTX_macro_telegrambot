@@ -3,13 +3,9 @@ Flask application entry point for Korail KTX Telegram Bot.
 
 This is the refactored version using the new service-oriented architecture.
 """
-import sys
 from flask import Flask
 from flask_restful import Api
 from flask_cors import CORS
-
-# Add src to path for imports
-sys.path.insert(0, '/Users/gray/dev/geunsam2/korail_KTX_macro_telegrambot/src')
 
 from config.settings import settings
 from storage.redis import RedisStorage
