@@ -3,6 +3,7 @@ Flask application entry point for Korail KTX Telegram Bot.
 
 This is the refactored version using the new service-oriented architecture.
 """
+import sys
 from flask import Flask
 from flask_restful import Api
 from flask_cors import CORS
