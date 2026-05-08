@@ -520,8 +520,9 @@ class KorailService:
         """
         try:
             # str(train) format: "[KTX] 4월 8일, 용산~광주송정(09:44~12:50), ..."
+            # Use rsplit to handle station names with parentheses e.g. 울산(통도사)~서울(09:44~12:50)
             train_str = str(train)
-            time_part = train_str.split("(")[1].split("~")[0]  # "09:44"
+            time_part = train_str.rsplit("(", 1)[1].split("~")[0]  # "09:44"
             time_str = "".join(time_part.split(":"))  # "0944"
             return int(time_str)
         except (IndexError, ValueError) as e:
