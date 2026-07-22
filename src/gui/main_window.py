@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import webbrowser
+import sys
 from datetime import date, timedelta
+from pathlib import Path
 
 from PySide6.QtCore import QDate, QSettings, QThread, QTime, Qt
 from PySide6.QtGui import QCloseEvent
@@ -118,13 +120,15 @@ class MainWindow(QMainWindow):
         self.gmail_api_button.clicked.connect(
             lambda: webbrowser.open("https://console.cloud.google.com/apis/library/gmail.googleapis.com")
         )
+        self.oauth_help_button = QPushButton("OAuth 설정 안내")
+        self.oauth_help_button.clicked.connect(self._show_oauth_help)
         self.google_disconnect_button = QPushButton("Google 연결 해제")
         self.google_disconnect_button.clicked.connect(self._google_disconnect)
         self.email_recipient = QLineEdit(); self.email_recipient.setPlaceholderText("recipient@example.com")
         self.test_email_button = QPushButton("테스트 메일 보내기")
         self.test_email_button.clicked.connect(self._test_email)
         form.addRow("연동 상태", self.oauth_status)
-        oauth_buttons = QHBoxLayout(); oauth_buttons.addWidget(self.google_setup_button); oauth_buttons.addWidget(self.gmail_api_button); oauth_buttons.addWidget(self.google_login_button); oauth_buttons.addWidget(self.google_disconnect_button)
+        oauth_buttons = QHBoxLayout(); oauth_buttons.addWidget(self.oauth_help_button); oauth_buttons.addWidget(self.google_setup_button); oauth_buttons.addWidget(self.gmail_api_button); oauth_buttons.addWidget(self.google_login_button); oauth_buttons.addWidget(self.google_disconnect_button)
         form.addRow("", oauth_buttons)
         form.addRow("수신 이메일", self.email_recipient)
         form.addRow("", self.test_email_button)
@@ -248,7 +252,7 @@ class MainWindow(QMainWindow):
     def _google_login(self) -> None:
         if self.google_login_thread and self.google_login_thread.isRunning():
             return
-        client_file = self.settings.value("google_oauth_client_file", "")
+        client_file = self._bundled_oauth_client_file() or self.settings.value("google_oauth_client_file", "")
         from pathlib import Path
         if not client_file or not Path(client_file).is_file():
             QMessageBox.information(
@@ -266,6 +270,30 @@ class MainWindow(QMainWindow):
         self.google_login_thread.completed.connect(self._google_login_completed)
         self.google_login_thread.finished.connect(self._google_login_finished)
         self.google_login_thread.start()
+
+    def _bundled_oauth_client_file(self) -> str:
+        base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[2]
+        candidate = base / "oauth_client.json"
+        return str(candidate) if candidate.is_file() else ""
+
+    def _show_oauth_help(self) -> None:
+        QMessageBox.information(
+            self,
+            "Google OAuth 설정 안내",
+            "[배포판 사용자]\n"
+            "1. 개발자가 프로덕션 OAuth 클라이언트를 배포판에 포함하면 별도 설정이 필요 없습니다.\n"
+            "2. Google 로그인을 누릅니다.\n"
+            "3. 브라우저에서 본인 Google 계정을 선택하고 Gmail 발신 권한을 승인합니다.\n\n"
+            "[개인 또는 개발용 JSON 사용]\n"
+            "1. Google Cloud에서 프로젝트를 선택하고 Gmail API를 활성화합니다.\n"
+            "2. OAuth 동의 화면의 사용자 유형을 External로 설정합니다.\n"
+            "3. 테스트 상태라면 사용할 Google 계정을 테스트 사용자에 추가합니다.\n"
+            "4. Credentials > Create credentials > OAuth client ID > Desktop app을 선택합니다.\n"
+            "5. JSON을 다운로드합니다.\n"
+            "6. 앱의 Google 로그인을 누르고 해당 JSON을 선택합니다.\n\n"
+            "배포 개발자는 프로덕션 OAuth JSON을 EXE와 같은 폴더에 "
+            "oauth_client.json 이름으로 두면 사용자의 JSON 선택 단계가 생략됩니다.",
+        )
 
     def _google_login_completed(self, ok: bool, token: str, email: str, message: str) -> None:
         if ok:

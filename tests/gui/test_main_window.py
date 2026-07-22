@@ -1,4 +1,5 @@
 import os
+import sys
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -28,5 +29,19 @@ def test_email_tab_requires_explicit_user_configuration():
     assert window.centralWidget().tabText(1) == "이메일 알림"
     assert hasattr(window, "email_recipient")
     assert not hasattr(window, "credentials_file")
+    window.close()
+    assert app is not None
+
+
+def test_distribution_oauth_client_next_to_exe_is_detected(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    executable = tmp_path / "KTX 자동예약.exe"
+    client = tmp_path / "oauth_client.json"
+    client.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(executable))
+    window = MainWindow()
+
+    assert window._bundled_oauth_client_file() == str(client)
     window.close()
     assert app is not None

@@ -17,6 +17,8 @@ dist-final/
 build-final/
 dist-restored/
 build-restored/
+dist-guide/
+build-guide/
 .pytest_cache/
 .venv/
 .venv-win/

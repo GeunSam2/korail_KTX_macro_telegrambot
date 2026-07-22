@@ -44,6 +44,12 @@ GUI 버전은 코레일 계정, 역, 날짜, 시간, 좌석 옵션을 화면에�
 요청합니다. 최초 연동 시 Google Cloud에서 생성한 데스크톱 앱 OAuth JSON이
 필요하며, 승인 토큰은 Windows 자격 증명 관리자에 저장됩니다.
 
+배포용으로는 개발자의 프로덕션 데스크톱 OAuth JSON을 EXE와 같은 폴더에
+`oauth_client.json`으로 두면 됩니다. 이 경우 각 사용자는 Google Cloud를 설정할 필요 없이
+브라우저에서 자신의 Google 계정으로 로그인하고 권한만 승인합니다. 테스트 상태의
+OAuth 앱은 최대 100명의 테스트 사용자를 명시해야 하며 Gmail 권한이 포함된 승인은
+7일 후 만료됩니다. 일반 배포 전에는 OAuth 브랜딩·데이터 액세스 검증을 완료하세요.
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build_windows.ps1
 ```
