@@ -21,6 +21,8 @@ dist-guide/
 build-guide/
 dist-current/
 build-current/
+dist-notify/
+build-notify/
 .pytest_cache/
 .venv/
 .venv-win/

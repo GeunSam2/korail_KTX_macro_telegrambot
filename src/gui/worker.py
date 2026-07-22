@@ -11,7 +11,7 @@ from config.settings import settings
 from services.korail_service import DuplicateReservationError, KorailService
 from services.credential_service import CredentialService
 from services.google_oauth_service import GoogleOAuthNotification, authenticate
-from services.notification_service import NotificationPipeline
+from services.notification_service import NotificationPipeline, TelegramNotification
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,10 @@ class ReservationRequest:
     strategy: str
     email_recipient: str = ""
     google_token: str = ""
+    email_enabled: bool = False
+    telegram_enabled: bool = False
+    telegram_token: str = ""
+    telegram_chat_id: str = ""
 
 
 class ReservationWorker(QObject):
@@ -108,20 +112,21 @@ class ReservationWorker(QObject):
         self.progress.emit(info["attempts"], timestamp)
 
     def _pipeline(self) -> NotificationPipeline:
-        if self.request.google_token and self.request.email_recipient:
-            return NotificationPipeline([
-                GoogleOAuthNotification(
+        channels = []
+        if self.request.email_enabled and self.request.google_token and self.request.email_recipient:
+            channels.append(GoogleOAuthNotification(
                     self.request.google_token,
                     self.request.email_recipient,
                     token_updated=lambda token: CredentialService().set("google_oauth_token", token),
-                )
-            ])
-        return NotificationPipeline()
+                ))
+        if self.request.telegram_enabled and self.request.telegram_token and self.request.telegram_chat_id:
+            channels.append(TelegramNotification(self.request.telegram_token, self.request.telegram_chat_id))
+        return NotificationPipeline(channels)
 
     def _notify(self, pipeline: NotificationPipeline, title: str, message: str) -> None:
         results = pipeline.send(title, message)
         if results and not all(results):
-            self.status.emit("이메일 알림 발송에 실패했습니다. Gmail 설정을 확인하세요.")
+            self.status.emit("일부 완료 알림 발송에 실패했습니다. 알림 설정을 확인하세요.")
 
 
 class EmailTestThread(QThread):
@@ -144,6 +149,18 @@ class EmailTestThread(QThread):
             self.completed.emit(ok, message)
         except Exception as exc:
             self.completed.emit(False, f"이메일 테스트 오류: {type(exc).__name__}: {exc}")
+
+
+class TelegramTestThread(QThread):
+    completed = Signal(bool, str)
+
+    def __init__(self, bot_token: str, chat_id: str):
+        super().__init__()
+        self.channel = TelegramNotification(bot_token, chat_id)
+
+    def run(self) -> None:
+        ok, detail = self.channel.send_detailed("코레일 GUI 테스트", "Telegram 알림 설정이 정상입니다.")
+        self.completed.emit(ok, "테스트 메시지를 보냈습니다." if ok else detail)
 
 
 class GoogleLoginThread(QThread):

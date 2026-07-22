@@ -5,6 +5,8 @@ import smtplib
 from email.message import EmailMessage
 from typing import Iterable, Protocol
 
+import requests
+
 
 class NotificationChannel(Protocol):
     def send(self, title: str, message: str) -> bool: ...
@@ -42,6 +44,32 @@ class GmailNotification:
             return False, f"Gmail SMTP 오류: {type(exc).__name__}"
         except Exception as exc:
             return False, f"이메일 오류: {type(exc).__name__}: {exc}"
+
+
+class TelegramNotification:
+    def __init__(self, bot_token: str, chat_id: str):
+        self.bot_token = bot_token.strip()
+        self.chat_id = chat_id.strip()
+
+    def send(self, title: str, message: str) -> bool:
+        ok, _ = self.send_detailed(title, message)
+        return ok
+
+    def send_detailed(self, title: str, message: str) -> tuple[bool, str]:
+        try:
+            response = requests.post(
+                f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
+                json={"chat_id": self.chat_id, "text": f"{title}\n\n{message}"},
+                timeout=15,
+            )
+            response.raise_for_status()
+            if not response.json().get("ok", False):
+                return False, "Telegram이 메시지 발송을 거부했습니다."
+            return True, "발송 성공"
+        except requests.RequestException as exc:
+            return False, f"Telegram 통신 오류: {type(exc).__name__}"
+        except Exception as exc:
+            return False, f"Telegram 오류: {type(exc).__name__}: {exc}"
 
 
 class NotificationPipeline:

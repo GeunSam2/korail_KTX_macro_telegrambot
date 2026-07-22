@@ -22,13 +22,48 @@ def test_windows_notification_is_default_result_channel():
     assert app is not None
 
 
-def test_email_tab_requires_explicit_user_configuration():
+def test_completion_notification_tab_has_independent_channels():
     app = QApplication.instance() or QApplication([])
     window = MainWindow()
 
-    assert window.centralWidget().tabText(1) == "이메일 알림"
+    assert window.centralWidget().tabText(1) == "완료 알림"
     assert hasattr(window, "email_recipient")
+    assert hasattr(window, "enable_email")
+    assert hasattr(window, "enable_telegram")
+    assert hasattr(window, "enable_windows")
     assert not hasattr(window, "credentials_file")
+    window.close()
+    assert app is not None
+
+
+def test_success_shows_both_windows_notification_and_popup(monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.enable_windows.setChecked(True)
+    toast = MagicMock()
+    popup = MagicMock()
+    monkeypatch.setattr(window, "_show_windows_notification", toast)
+    monkeypatch.setattr("gui.main_window.QMessageBox.information", popup)
+
+    window._success("예약되었습니다")
+
+    toast.assert_called_once()
+    popup.assert_called_once()
+    window.close()
+    assert app is not None
+
+
+def test_oauth_help_contains_only_personal_setup(monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    shown = MagicMock()
+    monkeypatch.setattr("gui.main_window.QMessageBox.information", shown)
+
+    window._show_oauth_help()
+
+    message = shown.call_args.args[2]
+    assert "개인 또는 개발용" in message
+    assert "배포판 사용자" not in message
     window.close()
     assert app is not None
 

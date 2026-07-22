@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from gui.worker import EmailTestThread
 from services.korail_service import KorailService
 from services.google_oauth_service import GoogleOAuthNotification
-from services.notification_service import GmailNotification, NotificationPipeline
+from services.notification_service import GmailNotification, NotificationPipeline, TelegramNotification
 
 
 def test_reservation_loop_honors_preexisting_cancel_event():
@@ -65,6 +65,14 @@ def test_pipeline_isolates_broken_channel():
     working = MagicMock()
     working.send.return_value = True
     assert NotificationPipeline([broken, working]).send("title", "body") == [False, True]
+
+
+def test_telegram_notification_success():
+    response = MagicMock()
+    response.json.return_value = {"ok": True}
+    with patch("services.notification_service.requests.post", return_value=response) as post:
+        assert TelegramNotification("token", "1234").send("title", "body")
+    post.assert_called_once()
 
 
 def test_email_thread_converts_unexpected_exception_to_failure_signal():
