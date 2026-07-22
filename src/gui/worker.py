@@ -9,7 +9,9 @@ from korail2 import ReserveOption, TrainType
 
 from config.settings import settings
 from services.korail_service import DuplicateReservationError, KorailService
-from services.notification_service import GmailNotification, NotificationPipeline
+from services.credential_service import CredentialService
+from services.google_oauth_service import GoogleOAuthNotification, authenticate
+from services.notification_service import NotificationPipeline
 
 
 @dataclass(frozen=True)
@@ -25,9 +27,8 @@ class ReservationRequest:
     train_type: TrainType
     reserve_option: ReserveOption
     strategy: str
-    email_sender: str = ""
-    email_password: str = ""
     email_recipient: str = ""
+    google_token: str = ""
 
 
 class ReservationWorker(QObject):
@@ -107,12 +108,12 @@ class ReservationWorker(QObject):
         self.progress.emit(info["attempts"], timestamp)
 
     def _pipeline(self) -> NotificationPipeline:
-        if all((self.request.email_sender, self.request.email_password, self.request.email_recipient)):
+        if self.request.google_token and self.request.email_recipient:
             return NotificationPipeline([
-                GmailNotification(
-                    self.request.email_sender,
-                    self.request.email_password,
+                GoogleOAuthNotification(
+                    self.request.google_token,
                     self.request.email_recipient,
+                    token_updated=lambda token: CredentialService().set("google_oauth_token", token),
                 )
             ])
         return NotificationPipeline()
@@ -126,14 +127,35 @@ class ReservationWorker(QObject):
 class EmailTestThread(QThread):
     completed = Signal(bool, str)
 
-    def __init__(self, sender: str, password: str, recipient: str):
+    def __init__(self, token_json: str, recipient: str):
         super().__init__()
-        self.channel = GmailNotification(sender, password, recipient)
+        self.channel = GoogleOAuthNotification(
+            token_json,
+            recipient,
+            token_updated=lambda token: CredentialService().set("google_oauth_token", token),
+        )
 
     def run(self) -> None:
         try:
-            ok = self.channel.send("코레일 GUI 테스트", "Gmail 알림 설정이 정상입니다.")
-            message = "테스트 메일을 보냈습니다." if ok else "발송에 실패했습니다. Gmail 앱 비밀번호와 네트워크를 확인하세요."
+            ok, detail = self.channel.send_detailed(
+                "코레일 GUI 테스트", "Gmail 알림 설정이 정상입니다."
+            )
+            message = "테스트 메일을 보냈습니다." if ok else detail
             self.completed.emit(ok, message)
         except Exception as exc:
             self.completed.emit(False, f"이메일 테스트 오류: {type(exc).__name__}: {exc}")
+
+
+class GoogleLoginThread(QThread):
+    completed = Signal(bool, str, str, str)
+
+    def __init__(self, client_secrets_file: str):
+        super().__init__()
+        self.client_secrets_file = client_secrets_file
+
+    def run(self) -> None:
+        try:
+            token, email = authenticate(self.client_secrets_file)
+            self.completed.emit(True, token, email, f"Google Gmail 연동이 완료되었습니다.\n알림 주소: {email}")
+        except Exception as exc:
+            self.completed.emit(False, "", "", f"Google 로그인 실패: {type(exc).__name__}: {exc}")

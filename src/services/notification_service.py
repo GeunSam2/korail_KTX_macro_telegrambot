@@ -17,6 +17,10 @@ class GmailNotification:
         self.recipient = recipient.strip()
 
     def send(self, title: str, message: str) -> bool:
+        ok, _ = self.send_detailed(title, message)
+        return ok
+
+    def send_detailed(self, title: str, message: str) -> tuple[bool, str]:
         email = EmailMessage()
         email["Subject"] = title
         email["From"] = self.sender
@@ -26,9 +30,18 @@ class GmailNotification:
             with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as client:
                 client.login(self.sender, self.app_password)
                 client.send_message(email)
-            return True
-        except Exception:
-            return False
+            return True, "발송 성공"
+        except smtplib.SMTPAuthenticationError:
+            return False, (
+                "Gmail이 인증을 거부했습니다. 일반 Google 계정 비밀번호가 아니라 "
+                "2단계 인증을 켠 뒤 생성한 16자리 '앱 비밀번호'를 입력하세요."
+            )
+        except (TimeoutError, OSError):
+            return False, "Gmail 서버에 연결할 수 없습니다. 인터넷 연결과 방화벽을 확인하세요."
+        except smtplib.SMTPException as exc:
+            return False, f"Gmail SMTP 오류: {type(exc).__name__}"
+        except Exception as exc:
+            return False, f"이메일 오류: {type(exc).__name__}: {exc}"
 
 
 class NotificationPipeline:

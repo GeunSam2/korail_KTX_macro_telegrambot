@@ -10,6 +10,9 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+dist-oauth/
+build-oauth/
+build-gui/
 .pytest_cache/
 .venv/
 .venv-win/

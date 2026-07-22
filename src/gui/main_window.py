@@ -1,7 +1,6 @@
 """Main desktop window for non-technical Korail users."""
 from __future__ import annotations
 
-import re
 import webbrowser
 from datetime import date, timedelta
 
@@ -9,13 +8,13 @@ from PySide6.QtCore import QDate, QSettings, QThread, QTime, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDateEdit, QFormLayout, QGroupBox,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
+    QFileDialog, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
     QSpinBox, QTabWidget, QTextEdit, QTimeEdit, QVBoxLayout, QWidget,
 )
 from korail2 import ReserveOption, TrainType
 
 from config.settings import settings
-from gui.worker import EmailTestThread, ReservationRequest, ReservationWorker
+from gui.worker import EmailTestThread, GoogleLoginThread, ReservationRequest, ReservationWorker
 from services.credential_service import CredentialService
 from utils.station_codes import FALLBACK_STATIONS
 
@@ -30,6 +29,9 @@ class MainWindow(QMainWindow):
         self.thread: QThread | None = None
         self.worker: ReservationWorker | None = None
         self.email_thread: QThread | None = None
+        self.google_login_thread: GoogleLoginThread | None = None
+        self.google_token = ""
+        self.google_email = ""
         self._build_ui()
         self._load_settings()
 
@@ -103,18 +105,26 @@ class MainWindow(QMainWindow):
 
     def _notification_tab(self) -> QWidget:
         page = QWidget(); layout = QVBoxLayout(page)
-        group = QGroupBox("Gmail 알림"); form = QFormLayout(group)
-        self.email_sender = QLineEdit(); self.email_sender.setPlaceholderText("sender@gmail.com")
-        self.email_password = QLineEdit(); self.email_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.email_password.setPlaceholderText("Google 앱 비밀번호 16자리")
+        group = QGroupBox("Google Gmail 알림"); form = QFormLayout(group)
+        self.oauth_status = QLabel("Google 로그인 필요")
+        self.google_login_button = QPushButton("Google 로그인")
+        self.google_login_button.clicked.connect(self._google_login)
+        self.google_setup_button = QPushButton("Google OAuth 설정 페이지")
+        self.google_setup_button.clicked.connect(
+            lambda: webbrowser.open("https://console.cloud.google.com/apis/credentials")
+        )
+        self.google_disconnect_button = QPushButton("Google 연결 해제")
+        self.google_disconnect_button.clicked.connect(self._google_disconnect)
         self.email_recipient = QLineEdit(); self.email_recipient.setPlaceholderText("recipient@example.com")
-        self.save_email = QCheckBox("Windows 자격 증명 관리자에 Gmail 앱 비밀번호 저장")
         self.test_email_button = QPushButton("테스트 메일 보내기")
         self.test_email_button.clicked.connect(self._test_email)
-        form.addRow("발신 Gmail", self.email_sender); form.addRow("앱 비밀번호", self.email_password)
-        form.addRow("수신 이메일", self.email_recipient); form.addRow("", self.save_email); form.addRow("", self.test_email_button)
+        form.addRow("연동 상태", self.oauth_status)
+        oauth_buttons = QHBoxLayout(); oauth_buttons.addWidget(self.google_setup_button); oauth_buttons.addWidget(self.google_login_button); oauth_buttons.addWidget(self.google_disconnect_button)
+        form.addRow("", oauth_buttons)
+        form.addRow("수신 이메일", self.email_recipient)
+        form.addRow("", self.test_email_button)
         layout.addWidget(group)
-        info = QLabel("Google 계정에 2단계 인증을 설정한 뒤 앱 비밀번호를 사용하세요.\n예약 성공과 치명적 오류에만 이메일을 보냅니다.")
+        info = QLabel("Google 로그인 버튼을 누르면 기본 브라우저에서 계정 선택과 Gmail 발송 권한 승인을 진행합니다.\n앱은 Google 비밀번호를 읽거나 저장하지 않습니다.")
         info.setWordWrap(True); layout.addWidget(info); layout.addStretch()
         return page
 
@@ -137,7 +147,7 @@ class MainWindow(QMainWindow):
             self.travel_date.date().toString("yyyyMMdd"), after, "2400" if before == "0000" else before,
             self.passengers.value(), TrainType.KTX if self.train_type.currentIndex() == 0 else TrainType.ALL,
             options[self.seat.currentIndex()], "consecutive" if self.strategy.currentIndex() == 0 else "random",
-            self.email_sender.text().strip(), self.email_password.text(), self.email_recipient.text().strip(),
+            email_recipient=self.email_recipient.text().strip(), google_token=self.google_token,
         )
 
     def _start(self, login_only: bool) -> None:
@@ -183,17 +193,19 @@ class MainWindow(QMainWindow):
         self._set_running(False); self.worker = None; self.thread = None
 
     def _valid_email_settings(self) -> bool:
-        values = (self.email_sender.text().strip(), self.email_password.text(), self.email_recipient.text().strip())
-        if not all(values) or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", values[0]) or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", values[2]):
-            QMessageBox.warning(self, "Gmail 설정", "발신 Gmail, 앱 비밀번호, 수신 이메일을 확인하세요."); return False
+        import re
+        recipient = self.email_recipient.text().strip()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", recipient):
+            QMessageBox.warning(self, "Gmail 설정", "올바른 수신 이메일 주소를 입력하세요.")
+            return False
+        if not self.google_token or not self.google_email:
+            QMessageBox.warning(self, "Google 로그인 필요", "먼저 Google 로그인 버튼을 눌러 Gmail을 연동하세요."); return False
         return True
 
     def _test_email(self) -> None:
         if not self._valid_email_settings() or (self.email_thread and self.email_thread.isRunning()): return
         self.test_email_button.setEnabled(False)
-        self.email_thread = EmailTestThread(
-            self.email_sender.text(), self.email_password.text(), self.email_recipient.text()
-        )
+        self.email_thread = EmailTestThread(self.google_token, self.email_recipient.text().strip())
         self.email_thread.completed.connect(self._email_test_completed)
         self.email_thread.finished.connect(self._email_finished)
         self.email_thread.start()
@@ -211,23 +223,77 @@ class MainWindow(QMainWindow):
         self.email_thread = None
         self.test_email_button.setEnabled(True)
 
+    def _google_login(self) -> None:
+        if self.google_login_thread and self.google_login_thread.isRunning():
+            return
+        client_file = self.settings.value("google_oauth_client_file", "")
+        from pathlib import Path
+        if not client_file or not Path(client_file).is_file():
+            QMessageBox.information(
+                self,
+                "Google OAuth 설정 파일",
+                "Google Cloud에서 Gmail API를 활성화하고 '데스크톱 앱' OAuth 클라이언트 JSON을 다운로드한 뒤 선택하세요.",
+            )
+            client_file, _ = QFileDialog.getOpenFileName(self, "Google OAuth JSON 선택", "", "JSON 파일 (*.json)")
+            if not client_file:
+                return
+            self.settings.setValue("google_oauth_client_file", client_file)
+        self.google_login_button.setEnabled(False)
+        self.oauth_status.setText("브라우저에서 Google 로그인 중...")
+        self.google_login_thread = GoogleLoginThread(client_file)
+        self.google_login_thread.completed.connect(self._google_login_completed)
+        self.google_login_thread.finished.connect(self._google_login_finished)
+        self.google_login_thread.start()
+
+    def _google_login_completed(self, ok: bool, token: str, email: str, message: str) -> None:
+        if ok:
+            self.google_token = token
+            self.google_email = email
+            self.credentials.set("google_oauth_token", token)
+            self.settings.setValue("google_account_email", email)
+            self.oauth_status.setText(f"Google Gmail 연동됨: {email}")
+            QMessageBox.information(self, "Google 로그인", message)
+        else:
+            self.oauth_status.setText("Google 로그인 실패")
+            self.log.append(message)
+            QMessageBox.warning(self, "Google 로그인 실패", message)
+
+    def _google_login_finished(self) -> None:
+        if self.google_login_thread:
+            self.google_login_thread.deleteLater()
+        self.google_login_thread = None
+        self.google_login_button.setEnabled(True)
+
+    def _google_disconnect(self) -> None:
+        self.credentials.delete("google_oauth_token")
+        self.google_token = ""
+        self.google_email = ""
+        self.settings.remove("google_account_email")
+        self.oauth_status.setText("Google 로그인 필요")
+        QMessageBox.information(self, "Google 연결 해제", "이 앱에 저장된 Google 인증 토큰을 삭제했습니다.")
+
     def _load_settings(self) -> None:
-        self.username.setText(self.settings.value("username", "")); self.email_sender.setText(self.settings.value("email_sender", "")); self.email_recipient.setText(self.settings.value("email_recipient", ""))
+        self.username.setText(self.settings.value("username", ""))
+        self.email_recipient.setText(self.settings.value("email_recipient", ""))
         try:
-            self.password.setText(self.credentials.get("korail_password")); self.email_password.setText(self.credentials.get("gmail_app_password"))
-            self.save_account.setChecked(bool(self.password.text())); self.save_email.setChecked(bool(self.email_password.text()))
+            self.credentials.delete("gmail_app_password")
+            self.password.setText(self.credentials.get("korail_password")); self.google_token = self.credentials.get("google_oauth_token")
+            self.google_email = self.settings.value("google_account_email", "")
+            self.save_account.setChecked(bool(self.password.text()))
+            self.oauth_status.setText(f"Google Gmail 연동됨: {self.google_email}" if self.google_token and self.google_email else "Google 로그인 필요")
         except Exception:
             self.log.append("Windows 자격 증명 관리자를 사용할 수 없습니다.")
 
     def _save_settings(self) -> None:
-        self.settings.setValue("username", self.username.text().strip() if self.save_account.isChecked() else ""); self.settings.setValue("email_sender", self.email_sender.text().strip()); self.settings.setValue("email_recipient", self.email_recipient.text().strip())
+        self.settings.setValue("username", self.username.text().strip() if self.save_account.isChecked() else "")
+        self.settings.setValue("email_recipient", self.email_recipient.text().strip())
         try:
             self.credentials.set("korail_password", self.password.text() if self.save_account.isChecked() else "")
-            self.credentials.set("gmail_app_password", self.email_password.text() if self.save_email.isChecked() else "")
         except Exception:
             self.log.append("비밀번호를 Windows 자격 증명 관리자에 저장하지 못했습니다.")
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if (self.thread and self.thread.isRunning()) or (self.email_thread and self.email_thread.isRunning()):
+        if ((self.thread and self.thread.isRunning()) or (self.email_thread and self.email_thread.isRunning())
+                or (self.google_login_thread and self.google_login_thread.isRunning())):
             QMessageBox.warning(self, "작업 실행 중", "예약 또는 이메일 테스트가 끝난 뒤 종료하세요."); event.ignore(); return
         self._save_settings(); event.accept()

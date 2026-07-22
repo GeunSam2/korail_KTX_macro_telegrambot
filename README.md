@@ -38,8 +38,11 @@ python src/local_cli.py \\
 
 GUI 버전은 코레일 계정, 역, 날짜, 시간, 좌석 옵션을 화면에서 설정하고
 예약 루프를 시작·중지할 수 있습니다. 예약 성공 시 Windows 팝업과 소리를
-제공하며, Gmail 앱 비밀번호를 설정하면 성공·치명적 오류 알림을 이메일로
-보냅니다. 암호는 선택 시 Windows 자격 증명 관리자에 저장됩니다.
+제공하며, Google OAuth로 Gmail을 연결하면 성공·치명적 오류 알림을
+지정한 수신 이메일로 발송합니다. Google 비밀번호를 앱에 입력할 필요가
+없으며 `gmail.send` 발신 권한과 계정 이메일 확인 권한만
+요청합니다. 최초 연동 시 Google Cloud에서 생성한 데스크톱 앱 OAuth JSON이
+필요하며, 승인 토큰은 Windows 자격 증명 관리자에 저장됩니다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build_windows.ps1
