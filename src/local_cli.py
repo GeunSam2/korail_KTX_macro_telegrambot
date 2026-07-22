@@ -100,6 +100,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="텔레그램 없이 KTX 좌석을 검색하고 예약하며 로컬 알림을 보냅니다."
     )
     parser.add_argument("--user", default=os.environ.get("KORAIL_USER"), help="코레일 회원번호/아이디")
+    parser.add_argument(
+        "--credentials-file",
+        type=Path,
+        help="1행 회원번호, 2행 비밀번호 형식의 파일",
+    )
     parser.add_argument("--from", dest="source", required=True, help="출발역 (예: 서울)")
     parser.add_argument("--to", dest="destination", required=True, help="도착역 (예: 부산)")
     parser.add_argument("--date", required=True, type=valid_date, help="출발일 YYYYMMDD")
@@ -117,10 +122,27 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def read_credentials(path: Path) -> tuple[str, str]:
+    try:
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+    except OSError as exc:
+        raise ValueError(f"자격정보 파일을 읽을 수 없습니다: {path}") from exc
+    if len(lines) < 2 or not lines[0].strip() or not lines[1].strip():
+        raise ValueError("자격정보 파일은 1행 회원번호, 2행 비밀번호 형식이어야 합니다.")
+    return lines[0].strip(), lines[1].strip()
+
+
 def main() -> int:
     args = build_parser().parse_args()
-    username = args.user or input("코레일 회원번호/아이디: ").strip()
-    password = getpass.getpass("코레일 비밀번호(표시되지 않음): ")
+    if args.credentials_file:
+        try:
+            username, password = read_credentials(args.credentials_file)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+    else:
+        username = args.user or input("코레일 회원번호/아이디: ").strip()
+        password = getpass.getpass("코레일 비밀번호(표시되지 않음): ")
     if not username or not password:
         print("아이디와 비밀번호가 필요합니다.", file=sys.stderr)
         return 2

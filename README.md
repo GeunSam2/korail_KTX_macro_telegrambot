@@ -30,6 +30,10 @@ python src/local_cli.py \\
 `--help`로 일반실/특실 우선순위, KTX 외 열차, 인원수 옵션을 확인할 수
 있습니다. 조회 간격은 기본 1초이며 더 짧게 설정하지 마세요.
 
+자격정보 파일은 1행에 코레일 회원번호, 2행에 비밀번호를 넣고
+`--credentials-file` 옵션으로 지정할 수 있습니다. 해당 파일은 Git 저장소 밖에
+보관하세요.
+
 ## 참고
 
 - 본 서비스는 [carpedm20/korail2](https://github.com/carpedm20/korail2)를 기반으로 합니다.
