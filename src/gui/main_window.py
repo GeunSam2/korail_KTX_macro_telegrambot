@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 from korail2 import ReserveOption, TrainType
 
 from config.settings import settings
-from gui.worker import EmailTestWorker, ReservationRequest, ReservationWorker
+from gui.worker import EmailTestThread, ReservationRequest, ReservationWorker
 from services.credential_service import CredentialService
 from utils.station_codes import FALLBACK_STATIONS
 
@@ -30,7 +30,6 @@ class MainWindow(QMainWindow):
         self.thread: QThread | None = None
         self.worker: ReservationWorker | None = None
         self.email_thread: QThread | None = None
-        self.email_worker: EmailTestWorker | None = None
         self._build_ui()
         self._load_settings()
 
@@ -192,18 +191,25 @@ class MainWindow(QMainWindow):
     def _test_email(self) -> None:
         if not self._valid_email_settings() or (self.email_thread and self.email_thread.isRunning()): return
         self.test_email_button.setEnabled(False)
-        self.email_thread = QThread(self)
-        self.email_worker = EmailTestWorker(self.email_sender.text(), self.email_password.text(), self.email_recipient.text())
-        self.email_worker.moveToThread(self.email_thread); self.email_thread.started.connect(self.email_worker.run)
-        self.email_worker.completed.connect(lambda ok: QMessageBox.information(self, "Gmail 테스트", "테스트 메일을 보냈습니다." if ok else "발송에 실패했습니다. Gmail 앱 비밀번호를 확인하세요."))
-        self.email_worker.finished.connect(self.email_thread.quit); self.email_worker.finished.connect(self.email_worker.deleteLater)
-        self.email_thread.finished.connect(lambda: self.test_email_button.setEnabled(True))
+        self.email_thread = EmailTestThread(
+            self.email_sender.text(), self.email_password.text(), self.email_recipient.text()
+        )
+        self.email_thread.completed.connect(self._email_test_completed)
         self.email_thread.finished.connect(self._email_finished)
-        self.email_thread.finished.connect(self.email_thread.deleteLater); self.email_thread.start()
+        self.email_thread.start()
+
+    def _email_test_completed(self, ok: bool, message: str) -> None:
+        if ok:
+            QMessageBox.information(self, "Gmail 테스트", message)
+        else:
+            self.log.append(message)
+            QMessageBox.warning(self, "Gmail 테스트 실패", message)
 
     def _email_finished(self) -> None:
-        self.email_worker = None
+        if self.email_thread:
+            self.email_thread.deleteLater()
         self.email_thread = None
+        self.test_email_button.setEnabled(True)
 
     def _load_settings(self) -> None:
         self.username.setText(self.settings.value("username", "")); self.email_sender.setText(self.settings.value("email_sender", "")); self.email_recipient.setText(self.settings.value("email_recipient", ""))
@@ -222,6 +228,6 @@ class MainWindow(QMainWindow):
             self.log.append("비밀번호를 Windows 자격 증명 관리자에 저장하지 못했습니다.")
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if self.thread and self.thread.isRunning():
-            QMessageBox.warning(self, "예약 실행 중", "먼저 중지 버튼을 누르고 종료하세요."); event.ignore(); return
+        if (self.thread and self.thread.isRunning()) or (self.email_thread and self.email_thread.isRunning()):
+            QMessageBox.warning(self, "작업 실행 중", "예약 또는 이메일 테스트가 끝난 뒤 종료하세요."); event.ignore(); return
         self._save_settings(); event.accept()

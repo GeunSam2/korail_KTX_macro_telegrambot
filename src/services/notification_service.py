@@ -27,7 +27,7 @@ class GmailNotification:
                 client.login(self.sender, self.app_password)
                 client.send_message(email)
             return True
-        except (OSError, smtplib.SMTPException):
+        except Exception:
             return False
 
 

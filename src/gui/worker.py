@@ -4,7 +4,7 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, QThread, Signal, Slot
 from korail2 import ReserveOption, TrainType
 
 from config.settings import settings
@@ -123,15 +123,17 @@ class ReservationWorker(QObject):
             self.status.emit("이메일 알림 발송에 실패했습니다. Gmail 설정을 확인하세요.")
 
 
-class EmailTestWorker(QObject):
-    completed = Signal(bool)
-    finished = Signal()
+class EmailTestThread(QThread):
+    completed = Signal(bool, str)
 
     def __init__(self, sender: str, password: str, recipient: str):
         super().__init__()
         self.channel = GmailNotification(sender, password, recipient)
 
-    @Slot()
     def run(self) -> None:
-        self.completed.emit(self.channel.send("코레일 GUI 테스트", "Gmail 알림 설정이 정상입니다."))
-        self.finished.emit()
+        try:
+            ok = self.channel.send("코레일 GUI 테스트", "Gmail 알림 설정이 정상입니다.")
+            message = "테스트 메일을 보냈습니다." if ok else "발송에 실패했습니다. Gmail 앱 비밀번호와 네트워크를 확인하세요."
+            self.completed.emit(ok, message)
+        except Exception as exc:
+            self.completed.emit(False, f"이메일 테스트 오류: {type(exc).__name__}: {exc}")

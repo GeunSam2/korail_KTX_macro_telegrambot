@@ -2,6 +2,7 @@ import smtplib
 import threading
 from unittest.mock import MagicMock, patch
 
+from gui.worker import EmailTestThread
 from services.korail_service import KorailService
 from services.notification_service import GmailNotification, NotificationPipeline
 
@@ -54,3 +55,14 @@ def test_pipeline_isolates_broken_channel():
     working = MagicMock()
     working.send.return_value = True
     assert NotificationPipeline([broken, working]).send("title", "body") == [False, True]
+
+
+def test_email_thread_converts_unexpected_exception_to_failure_signal():
+    thread = EmailTestThread("from@gmail.com", "secret", "to@example.com")
+    thread.channel.send = MagicMock(side_effect=RuntimeError("unexpected"))
+    results = []
+    thread.completed.connect(lambda ok, message: results.append((ok, message)))
+
+    thread.run()
+
+    assert results == [(False, "이메일 테스트 오류: RuntimeError: unexpected")]
