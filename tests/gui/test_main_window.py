@@ -45,3 +45,30 @@ def test_distribution_oauth_client_next_to_exe_is_detected(tmp_path, monkeypatch
     assert window._bundled_oauth_client_file() == str(client)
     window.close()
     assert app is not None
+
+
+def test_station_fields_start_unselected_and_date_defaults_to_today():
+    from PySide6.QtCore import QDate
+
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+
+    assert window.source.currentIndex() == -1
+    assert window.destination.currentIndex() == -1
+    assert window.source.currentText() == ""
+    assert window.destination.currentText() == ""
+    assert window.travel_date.date() == QDate.currentDate()
+    window.close()
+    assert app is not None
+
+
+def test_reservation_request_rejects_unselected_stations(monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    warning = MagicMock()
+    monkeypatch.setattr("gui.main_window.QMessageBox.warning", warning)
+
+    assert window._request() is None
+    warning.assert_called_once()
+    window.close()
+    assert app is not None
