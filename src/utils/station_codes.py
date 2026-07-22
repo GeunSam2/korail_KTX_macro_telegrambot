@@ -207,8 +207,8 @@ class StationManager:
         return stations
 
 
-# Global station manager instance
-_station_manager = StationManager()
+# Lazily initialized so desktop startup never waits for Redis.
+_station_manager = None
 
 
 def get_valid_stations(force_refresh: bool = False) -> Set[str]:
@@ -221,6 +221,9 @@ def get_valid_stations(force_refresh: bool = False) -> Set[str]:
     Returns:
         Set of valid station names
     """
+    global _station_manager
+    if _station_manager is None:
+        _station_manager = StationManager()
     return _station_manager.get_valid_stations(force_refresh=force_refresh)
 
 

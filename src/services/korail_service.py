@@ -1,6 +1,6 @@
 """Korail API service wrapper."""
 import time
-from typing import Optional, List
+from typing import Any, Callable, Optional, List
 from korail2 import (
     Korail as K2MKorail, TrainType, ReserveOption, SoldOutError, NoResultsError,
     AdultPassenger
@@ -281,7 +281,9 @@ class KorailService:
         reserve_option: ReserveOption = ReserveOption.GENERAL_FIRST,
         passenger_count: int = 1,
         seat_strategy: str = "consecutive",
-        max_attempts: Optional[int] = None
+        max_attempts: Optional[int] = None,
+        cancel_event: Optional[Any] = None,
+        progress_callback: Optional[Callable[[dict], None]] = None,
     ):
         """
         Continuously search for trains and attempt reservation until successful.
@@ -313,12 +315,14 @@ class KorailService:
         if seat_strategy == "consecutive":
             return self._search_and_reserve_consecutive(
                 dep_date, src_locate, dst_locate, dep_time, max_dep_time,
-                train_type, reserve_option, passenger_count, max_attempts
+                train_type, reserve_option, passenger_count, max_attempts,
+                cancel_event, progress_callback
             )
         else:  # random
             return self._search_and_reserve_random(
                 dep_date, src_locate, dst_locate, dep_time, max_dep_time,
-                train_type, reserve_option, passenger_count, max_attempts
+                train_type, reserve_option, passenger_count, max_attempts,
+                cancel_event, progress_callback
             )
 
     def _search_and_reserve_consecutive(
@@ -331,7 +335,9 @@ class KorailService:
         train_type: TrainType,
         reserve_option: ReserveOption,
         passenger_count: int,
-        max_attempts: Optional[int]
+        max_attempts: Optional[int],
+        cancel_event: Optional[Any],
+        progress_callback: Optional[Callable[[dict], None]]
     ):
         """Reserve seats consecutively (together)."""
         attempts = 0
@@ -340,7 +346,11 @@ class KorailService:
         logger.info(f"🔄 Starting consecutive seat search loop (passengers={passenger_count})")
 
         while True:
+            if cancel_event and cancel_event.is_set():
+                logger.info("Reservation search cancelled by user")
+                return None
             attempts += 1
+            self._report_progress(progress_callback, attempts)
             if max_attempts and attempts > max_attempts:
                 logger.warning(f"❌ Reached max attempts ({max_attempts}), stopping")
                 return None
@@ -364,7 +374,8 @@ class KorailService:
             if not trains:
                 if is_summary:
                     logger.debug(f"📊 Attempt #{attempts}: no trains found, retrying...")
-                time.sleep(self._search_interval)
+                if self._wait_or_cancel(cancel_event, self._search_interval):
+                    return None
                 continue
 
             # Try to reserve each train found (trains found = rare, always log)
@@ -391,7 +402,8 @@ class KorailService:
             logger.debug(f"All {len(trains)} trains sold out in attempt #{attempts}")
 
             # Wait before next search
-            time.sleep(self._search_interval)
+            if self._wait_or_cancel(cancel_event, self._search_interval):
+                return None
 
     def _search_and_reserve_random(
         self,
@@ -403,7 +415,9 @@ class KorailService:
         train_type: TrainType,
         reserve_option: ReserveOption,
         passenger_count: int,
-        max_attempts: Optional[int]
+        max_attempts: Optional[int],
+        cancel_event: Optional[Any],
+        progress_callback: Optional[Callable[[dict], None]]
     ):
         """Reserve seats randomly (one at a time until target count reached)."""
         attempts = 0
@@ -414,7 +428,11 @@ class KorailService:
         logger.info(f"Random seating: will reserve {target_count} individual tickets")
 
         while len(reservations) < target_count:
+            if cancel_event and cancel_event.is_set():
+                logger.info("Reservation search cancelled by user")
+                return None
             attempts += 1
+            self._report_progress(progress_callback, attempts)
             if max_attempts and attempts > max_attempts:
                 logger.warning(f"Reached max attempts ({max_attempts}), stopping")
                 # Cancel any partial reservations
@@ -434,7 +452,8 @@ class KorailService:
             if not trains:
                 if is_summary:
                     logger.debug(f"📊 Attempt #{attempts}: no trains found, retrying...")
-                time.sleep(self._search_interval)
+                if self._wait_or_cancel(cancel_event, self._search_interval):
+                    return None
                 continue
 
             # Try to reserve each train found (trains found = rare, always log)
@@ -483,16 +502,30 @@ class KorailService:
 
                     # Add delay between individual reservations to avoid rate limit
                     # Use longer interval for safety
-                    time.sleep(self._search_interval * 1.5)
+                    if self._wait_or_cancel(cancel_event, self._search_interval * 1.5):
+                        return None
                     break  # Found a train and reserved, restart search loop
 
                 else:
                     logger.debug("Reservation failed, continuing search...")
 
             # Wait before next search attempt
-            time.sleep(self._search_interval)
+            if self._wait_or_cancel(cancel_event, self._search_interval):
+                return None
 
         return reservations[0] if reservations else None
+
+    @staticmethod
+    def _report_progress(callback: Optional[Callable[[dict], None]], attempts: int) -> None:
+        if callback:
+            callback({"attempts": attempts, "timestamp": time.time()})
+
+    @staticmethod
+    def _wait_or_cancel(cancel_event: Optional[Any], seconds: float) -> bool:
+        if cancel_event:
+            return bool(cancel_event.wait(seconds))
+        time.sleep(seconds)
+        return False
 
     def _cancel_reservations(self, reservations: List) -> None:
         """Cancel a list of reservations (cleanup for failed random allocation)."""

@@ -13,4 +13,7 @@ build/
 .pytest_cache/
 .venv/
 .venv-win/
+.venv-gui/
 local_notifications.log
+dist/
+build/

@@ -34,6 +34,20 @@ python src/local_cli.py \\
 `--credentials-file` 옵션으로 지정할 수 있습니다. 해당 파일은 Git 저장소 밖에
 보관하세요.
 
+## Windows GUI
+
+GUI 버전은 코레일 계정, 역, 날짜, 시간, 좌석 옵션을 화면에서 설정하고
+예약 루프를 시작·중지할 수 있습니다. 예약 성공 시 Windows 팝업과 소리를
+제공하며, Gmail 앱 비밀번호를 설정하면 성공·치명적 오류 알림을 이메일로
+보냅니다. 암호는 선택 시 Windows 자격 증명 관리자에 저장됩니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build_windows.ps1
+```
+
+빌드 결과는 `dist\KTX 자동예약\KTX 자동예약.exe`입니다. 배포할 때는
+`KTX 자동예약` 폴더 전체를 압축하세요.
+
 ## 참고
 
 - 본 서비스는 [carpedm20/korail2](https://github.com/carpedm20/korail2)를 기반으로 합니다.
