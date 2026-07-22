@@ -8,8 +8,6 @@ a = Analysis(
     hiddenimports=[
         "keyring.backends.Windows",
         "korail2",
-        "google_auth_oauthlib.flow",
-        "googleapiclient.discovery",
     ],
     hookspath=[],
     runtime_hooks=[],
