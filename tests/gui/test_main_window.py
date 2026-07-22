@@ -21,11 +21,12 @@ def test_windows_notification_is_default_result_channel():
     assert app is not None
 
 
-def test_email_tab_is_stub_without_inputs():
+def test_email_tab_requires_explicit_user_configuration():
     app = QApplication.instance() or QApplication([])
     window = MainWindow()
 
-    assert "이메일 알림 (준비 중)" in window.centralWidget().tabText(1) or window.centralWidget().tabText(1) == "이메일 알림"
-    assert not hasattr(window, "email_recipient")
+    assert window.centralWidget().tabText(1) == "이메일 알림"
+    assert hasattr(window, "email_recipient")
+    assert not hasattr(window, "credentials_file")
     window.close()
     assert app is not None
