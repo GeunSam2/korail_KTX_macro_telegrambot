@@ -4,13 +4,11 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass
 
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot
 from korail2 import ReserveOption, TrainType
 
 from config.settings import settings
 from services.korail_service import DuplicateReservationError, KorailService
-from services.credential_service import CredentialService
-from services.google_oauth_service import GoogleOAuthNotification, authenticate
 from services.notification_service import NotificationPipeline
 
 
@@ -108,54 +106,10 @@ class ReservationWorker(QObject):
         self.progress.emit(info["attempts"], timestamp)
 
     def _pipeline(self) -> NotificationPipeline:
-        if self.request.google_token and self.request.email_recipient:
-            return NotificationPipeline([
-                GoogleOAuthNotification(
-                    self.request.google_token,
-                    self.request.email_recipient,
-                    token_updated=lambda token: CredentialService().set("google_oauth_token", token),
-                )
-            ])
+        # Email is intentionally a stub. Windows notifications are handled by the GUI.
         return NotificationPipeline()
 
     def _notify(self, pipeline: NotificationPipeline, title: str, message: str) -> None:
         results = pipeline.send(title, message)
         if results and not all(results):
             self.status.emit("이메일 알림 발송에 실패했습니다. Gmail 설정을 확인하세요.")
-
-
-class EmailTestThread(QThread):
-    completed = Signal(bool, str)
-
-    def __init__(self, token_json: str, recipient: str):
-        super().__init__()
-        self.channel = GoogleOAuthNotification(
-            token_json,
-            recipient,
-            token_updated=lambda token: CredentialService().set("google_oauth_token", token),
-        )
-
-    def run(self) -> None:
-        try:
-            ok, detail = self.channel.send_detailed(
-                "코레일 GUI 테스트", "Gmail 알림 설정이 정상입니다."
-            )
-            message = "테스트 메일을 보냈습니다." if ok else detail
-            self.completed.emit(ok, message)
-        except Exception as exc:
-            self.completed.emit(False, f"이메일 테스트 오류: {type(exc).__name__}: {exc}")
-
-
-class GoogleLoginThread(QThread):
-    completed = Signal(bool, str, str, str)
-
-    def __init__(self, client_secrets_file: str):
-        super().__init__()
-        self.client_secrets_file = client_secrets_file
-
-    def run(self) -> None:
-        try:
-            token, email = authenticate(self.client_secrets_file)
-            self.completed.emit(True, token, email, f"Google Gmail 연동이 완료되었습니다.\n알림 주소: {email}")
-        except Exception as exc:
-            self.completed.emit(False, "", "", f"Google 로그인 실패: {type(exc).__name__}: {exc}")

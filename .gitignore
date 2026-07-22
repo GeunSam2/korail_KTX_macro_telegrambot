@@ -13,6 +13,8 @@ build/
 dist-oauth/
 build-oauth/
 build-gui/
+dist-final/
+build-final/
 .pytest_cache/
 .venv/
 .venv-win/

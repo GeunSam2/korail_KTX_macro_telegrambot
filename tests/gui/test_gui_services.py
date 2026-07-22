@@ -2,9 +2,7 @@ import smtplib
 import threading
 from unittest.mock import MagicMock, patch
 
-from gui.worker import EmailTestThread
 from services.korail_service import KorailService
-from services.google_oauth_service import GoogleOAuthNotification
 from services.notification_service import GmailNotification, NotificationPipeline
 
 
@@ -64,29 +62,3 @@ def test_pipeline_isolates_broken_channel():
     working = MagicMock()
     working.send.return_value = True
     assert NotificationPipeline([broken, working]).send("title", "body") == [False, True]
-
-
-def test_email_thread_converts_unexpected_exception_to_failure_signal():
-    thread = EmailTestThread("{}", "to@example.com")
-    thread.channel.send_detailed = MagicMock(side_effect=RuntimeError("unexpected"))
-    results = []
-    thread.completed.connect(lambda ok, message: results.append((ok, message)))
-
-    thread.run()
-
-    assert results == [(False, "이메일 테스트 오류: RuntimeError: unexpected")]
-
-
-def test_google_oauth_notification_sends_to_connected_account():
-    credentials = MagicMock(valid=True, expired=False)
-    send_call = MagicMock()
-    send_call.execute.return_value = {"id": "message-id"}
-    service = MagicMock()
-    service.users.return_value.messages.return_value.send.return_value = send_call
-    with patch("services.google_oauth_service.Credentials.from_authorized_user_info", return_value=credentials), patch(
-        "services.google_oauth_service.build", return_value=service
-    ):
-        ok, detail = GoogleOAuthNotification('{"token":"test"}', "self@gmail.com").send_detailed("title", "body")
-    assert ok
-    assert detail == "발송 성공"
-    service.users.return_value.messages.return_value.send.assert_called_once()
