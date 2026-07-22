@@ -11,3 +11,6 @@ __pycache__/
 dist/
 build/
 .pytest_cache/
+.venv/
+.venv-win/
+local_notifications.log

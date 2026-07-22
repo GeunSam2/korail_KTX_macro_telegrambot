@@ -15,6 +15,21 @@ make install     # 패키지 설치
 make run         # 실행
 ```
 
+## 텔레그램 없이 로컬에서 실행
+
+`local_cli.py`는 예약 성공/실패를 Windows 대화상자(WSL), Linux 데스크톱 알림,
+터미널 소리와 `local_notifications.log`로 알립니다. 비밀번호는 프롬프트에서만 받으며
+파일이나 명령 기록에 저장하지 않습니다.
+
+```bash
+python src/local_cli.py \\
+  --from 서울 --to 부산 --date 20260801 \\
+  --after 0900 --before 1200 --passengers 1
+```
+
+`--help`로 일반실/특실 우선순위, KTX 외 열차, 인원수 옵션을 확인할 수
+있습니다. 조회 간격은 기본 1초이며 더 짧게 설정하지 마세요.
+
 ## 참고
 
 - 본 서비스는 [carpedm20/korail2](https://github.com/carpedm20/korail2)를 기반으로 합니다.
