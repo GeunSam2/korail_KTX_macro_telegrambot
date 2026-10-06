@@ -18,7 +18,12 @@ class Settings:
     # Korail Configuration
     KORAIL_ADMIN_USER_ID: Optional[str] = os.environ.get('USERID')
     KORAIL_ADMIN_PASSWORD: Optional[str] = os.environ.get('USERPW')
-    KORAIL_SEARCH_INTERVAL: int = int(os.environ.get('SEARCH_INTERVAL', '1'))  # seconds
+    KORAIL_SEARCH_INTERVAL: int = int(os.environ.get('SEARCH_INTERVAL', '3'))  # seconds between searches
+    # DynaPath device identity. Pin explicitly or let the service persist a generated one to a file
+    # so the web app and every background process present the same device to Korail.
+    KORAIL_DEVICE_PROFILE_ID: Optional[str] = os.environ.get('KORAIL_DEVICE_PROFILE_ID')
+    KORAIL_ANDROID_ID: Optional[str] = os.environ.get('KORAIL_ANDROID_ID')
+    KORAIL_DEVICE_FILE: str = os.environ.get('KORAIL_DEVICE_FILE', os.path.expanduser('~/.korail_bot_device.json'))
     KORAIL_STATION_LIST_URL: str = "http://www.letskorail.com/ebizprd/stationKtxList.do"
     KORAIL_PAYMENT_URL: str = "https://www.letskorail.com/ebizprd/EbizPrdTicketpr13500W_pr13510.do?"
 

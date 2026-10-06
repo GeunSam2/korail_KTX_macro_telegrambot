@@ -1,4 +1,5 @@
 """Telegram webhook API endpoint."""
+from typing import Optional
 from flask import request, make_response
 from flask_restful import Resource
 
@@ -24,6 +25,7 @@ class TelegramWebhook(Resource):
         telegram_service: TelegramService,
         reservation_service: ReservationService,
         payment_reminder_service: PaymentReminderService,
+        multi_reminder_service: Optional[MultiReservationReminderService] = None,
         **kwargs
     ):
         """
@@ -41,8 +43,10 @@ class TelegramWebhook(Resource):
         self.reservation = reservation_service
         self.payment_reminder = payment_reminder_service
 
-        # Initialize multi-reservation reminder service (singleton for thread tracking)
-        self.multi_reminder = MultiReservationReminderService(storage, telegram_service)
+        # Flask-RESTful builds a new Resource per request, so the reminder service (which
+        # tracks running threads) must be shared via injection from app.py. Creating it here
+        # would start one reminder thread per callback.
+        self.multi_reminder = multi_reminder_service or MultiReservationReminderService(storage, telegram_service)
 
         # Initialize handlers
         self.command_handler = CommandHandler(
@@ -133,9 +137,14 @@ class TelegramWebhook(Resource):
                 # Mark payment ready for background process
                 self.storage.mark_payment_ready(chat_id, current_seat)
 
-                # DON'T stop reminders - they should continue running for remaining seats
-                # The reminder service will automatically update when new seats are added
-                logger.info(f"Payment confirmed, reminders will continue for remaining seats")
+                # Mark this seat as paid so the reminder loop stops nagging about it.
+                # Reminders resume automatically when the next seat is reserved.
+                self.multi_reminder.mark_seat_paid(chat_id, current_seat + 1)
+
+                # Clear the seat index now; otherwise every message sent while the next seat
+                # is being searched would be treated as another payment confirmation.
+                self.storage.set_current_seat_index(chat_id, None)
+                logger.info(f"Payment confirmed for seat {current_seat}, reminders continue for remaining seats")
 
                 # Send confirmation
                 self.telegram.send_message(

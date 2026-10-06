@@ -9,7 +9,6 @@ import sys
 import time
 import requests
 from datetime import datetime, timedelta
-from korail2 import TrainType, ReserveOption
 
 # Add src to path
 import os
@@ -20,7 +19,9 @@ sys.path.insert(0, src_dir)
 from config.settings import settings
 from storage.redis import RedisStorage
 from services import KorailService, TelegramService, PaymentReminderService, MultiReservationReminderService
-from services.korail_service import DuplicateReservationError
+from services.korail_service import (
+    DuplicateReservationError, KorailAccessRestrictedError, TrainType, ReserveOption
+)
 from models import MultiReservationStatus, SingleReservationInfo, ReservationPaymentStatus
 from utils.logger import get_logger, LoggerFactory
 
@@ -142,6 +143,8 @@ class BackgroundReservationProcess:
                 message = f"""
 ❌ 코레일 로그인 실패
 
+사유: {self.korail.last_login_error or '알 수 없음'}
+
 아이디/비밀번호가 올바르지 않거나 코레일 서버에 문제가 있습니다.
 
 💡 조치 방법:
@@ -216,6 +219,22 @@ class BackgroundReservationProcess:
                     # Should not happen as we already notified, but handle gracefully
                     logger.error("Duplicate error raised again - this shouldn't happen")
                     pass
+            except KorailAccessRestrictedError as e:
+                logger.error(f"Korail access restricted, stopping search: {e}")
+                message = f"""
+🚫 코레일 이용 제한
+
+코레일이 현재 네트워크 환경에서 오는 요청을 거부했습니다.
+
+서버 메시지: {str(e)}
+
+💡 조치 방법:
+1. VPN을 끄고 가정용 회선에서 실행하세요
+2. 같은 IP에서 반복 시도하면 차단이 길어집니다
+3. 공유기 재접속 등으로 공인 IP가 바뀐 뒤 /cancel 후 다시 시작하세요
+"""
+                self._send_callback(message, status=1)
+                return
             except requests.exceptions.RequestException as e:
                 logger.error(f"Network error during reservation: {e}")
                 message = f"""
@@ -384,7 +403,7 @@ class BackgroundReservationProcess:
 
         Args:
             seat_index: Index of the seat just reserved (0-based)
-            reservation: Reservation object from korail2
+            reservation: Reservation object from pykorail
             total_seats: Total number of seats being reserved
         """
         try:
@@ -438,7 +457,7 @@ class BackgroundReservationProcess:
         (Legacy method - kept for compatibility)
 
         Args:
-            all_reservations: List of reservation objects from korail2
+            all_reservations: List of reservation objects from pykorail
             total_seats: Total number of seats reserved
         """
         try:
@@ -598,12 +617,6 @@ class BackgroundReservationProcess:
 
                 if payment_confirmed:
                     logger.info(f"✅ Payment confirmed for seat {seat_index + 1}")
-                    confirm_msg = f"""
-✅ {seat_index + 1}번째 좌석 결제 확인!
-
-다음 좌석 예약을 시작합니다...
-"""
-                    self._send_callback(confirm_msg, status=2, seat_strategy=self.seat_strategy)
                 else:
                     logger.warning(f"⏱ Payment timeout for seat {seat_index + 1}")
                     timeout_msg = f"""
@@ -614,6 +627,10 @@ class BackgroundReservationProcess:
 ⚠️ 미결제 좌석은 자동 취소될 수 있으니 빠르게 결제해주세요!
 """
                     self._send_callback(timeout_msg, status=2, seat_strategy=self.seat_strategy)
+
+                # Seat index must not linger: otherwise every user message during the next
+                # search is misread as a payment confirmation for this seat.
+                self.storage.set_current_seat_index(self.chat_id, None)
 
                 # Brief pause before next reservation
                 logger.info("Waiting 3 seconds before next reservation...")
@@ -674,6 +691,8 @@ class BackgroundReservationProcess:
                     logger.debug(f"✅ Search completed: found {len(trains)} trains")
                 elif is_summary:
                     logger.debug(f"📊 Attempt #{attempts}: no trains found, retrying...")
+            except (KorailAccessRestrictedError, ValueError):
+                raise  # fatal: blocked client or invalid search (e.g. departure already passed)
             except Exception as e:
                 logger.error(f"❌ Search failed (attempt #{attempts}): {e}", exc_info=True)
                 time.sleep(self.korail._search_interval)

@@ -1,5 +1,4 @@
 """Conversation flow handler for reservation process."""
-from korail2 import TrainType, ReserveOption
 
 from config.settings import settings
 from models import UserSession, UserProgress, UserCredentials, TrainSearchParams
@@ -302,14 +301,15 @@ class ConversationHandler:
             return
 
         option_map = {
-            "1": (ReserveOption.GENERAL_FIRST, "GENERAL_FIRST"),
-            "2": (ReserveOption.GENERAL_ONLY, "GENERAL_ONLY"),
-            "3": (ReserveOption.SPECIAL_FIRST, "SPECIAL_FIRST"),
-            "4": (ReserveOption.SPECIAL_ONLY, "SPECIAL_ONLY"),
+            "1": "GENERAL_FIRST",
+            "2": "GENERAL_ONLY",
+            "3": "SPECIAL_FIRST",
+            "4": "SPECIAL_ONLY",
         }
 
-        option, option_display = option_map[text]
-        session.train_info['specialInfo'] = str(option)
+        option_display = option_map[text]
+        # Stored as "ReserveOption.<NAME>"; the background process parses this string.
+        session.train_info['specialInfo'] = f"ReserveOption.{option_display}"
         session.train_info['specialInfoShow'] = option_display
 
         session.last_action = UserProgress.SPECIAL_INPUT_SUCCESS

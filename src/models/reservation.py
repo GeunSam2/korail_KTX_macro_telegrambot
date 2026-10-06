@@ -13,9 +13,9 @@ class TrainSearchParams:
     dst_locate: str  # Station name (without '역')
     dep_time: str  # Format: HHMMSS
     max_dep_time: str = "2400"  # Format: HHMM
-    train_type: str = "TrainType.KTX"  # korail2.TrainType enum as string
+    train_type: str = "TrainType.KTX"  # TrainType name as string, e.g. "TrainType.KTX"
     train_type_display: str = "KTX"
-    special_option: str = "ReserveOption.GENERAL_FIRST"  # korail2.ReserveOption enum as string
+    special_option: str = "ReserveOption.GENERAL_FIRST"  # ReserveOption name as string, e.g. "ReserveOption.GENERAL_FIRST"
     special_option_display: str = "GENERAL_FIRST"
     passenger_count: int = 1  # Number of adult passengers (1-9)
     seat_strategy: str = "consecutive"  # "consecutive" or "random"
@@ -73,8 +73,8 @@ class ReservationPaymentStatus(Enum):
 @dataclass
 class SingleReservationInfo:
     """Information about a single train reservation."""
-    reservation_id: str              # Unique ID from korail2
-    reservation_obj: any             # Original reservation object from korail2
+    reservation_id: str              # Unique ID from pykorail
+    reservation_obj: any             # Original reservation object from pykorail
     reserved_at: datetime            # When reservation was created
     expires_at: datetime             # When reservation will expire
     status: ReservationPaymentStatus # Current payment status

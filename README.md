@@ -17,13 +17,15 @@ make run         # 실행
 
 ## 참고
 
-- 본 서비스는 [carpedm20/korail2](https://github.com/carpedm20/korail2)를 기반으로 합니다.
-- Dynapath 우회 패치가 적용된 [dhfhfk/korail2](https://github.com/dhfhfk/korail2/tree/bypassDynapath) fork를 패키지로 설치하여 사용합니다.
+- 코레일 API 클라이언트로 [devgyurak/pykorail](https://github.com/devgyurak/pykorail)을 사용합니다 (코레일+ 7.0.8 규격, Python 3.10+).
+- 과거에 사용했던 [carpedm20/korail2](https://github.com/carpedm20/korail2) 계열은 2026-09 코레일+ 앱 업데이트 이후 `-2000 이용 제한` 응답을 받아 동작하지 않습니다.
+- 코레일은 AWS 등 데이터센터·VPN IP를 차단(`-8202`)하고, 매크로로 판정한 공인 IP도 차단합니다. 봇은 가정용 회선에서 실행하세요. 한 번 차단된 IP는 코드를 고쳐도 풀리지 않으며 공인 IP가 바뀌어야 합니다.
+- DynaPath 기기 식별자는 `KORAIL_DEVICE_FILE`(기본 `~/.korail_bot_device.json`)에 저장되어 모든 프로세스가 같은 기기로 보이게 합니다. 고정하려면 `KORAIL_DEVICE_PROFILE_ID`/`KORAIL_ANDROID_ID`를 환경변수로 지정하세요.
 
 ## 주의사항
 
 1. 귀경길 기차 예매를 하지 못한 안타까운 영혼들을 위해 만든 프로그램이므로, 개인용 목적이 아닌 상업적 목적등으로 이용하는 것을 엄중히 금합니다.
-2. 본 프로그램을 사용할 경우, 기본으로 설정된 1초에 1번 조회 요청에 대한 설정 값 이상으로 빠르게 설정하지 마십시오. 코레일 서버에 무리가 갈 뿐 아니라, 단위 시간내에 보다 빠른 값으로 조회를 요청할 경우, 계정이 정지될 수 있습니다.
+2. 본 프로그램을 사용할 경우, 기본으로 설정된 3초에 1번(`SEARCH_INTERVAL=3`) 조회 요청보다 빠르게 설정하지 마십시오. 짧은 조회 간격은 매크로 판정과 IP 차단의 주된 원인입니다. 코레일 서버에 무리가 갈 뿐 아니라, 단위 시간내에 보다 빠른 값으로 조회를 요청할 경우, 계정이 정지될 수 있습니다.
 3. 본 프로그램은 2026-04-08일 기준으로 정상 동작하지만, 사이트의 구성이나 변수명 변경등에 따라 언제든 동작하지 않을 수 있습니다.
 
 ## 설정법
@@ -142,7 +144,7 @@ make test-logic
   - 404 에러 처리 확인
 
 - `tests/test_korail_logic.py` - Korail 예약 로직 테스트
-  - korail2 라이브러리 import 확인
+  - pykorail 라이브러리 import 확인
   - 필수 클래스 (Korail, TrainType, ReserveOption) 확인
   - Flask 및 Telegram Bot 의존성 확인
   - 결제 리마인더 시간 설정 (10분, 10초 간격) 확인
@@ -160,17 +162,10 @@ git add Pipfile Pipfile.lock requirements.txt
 git commit -m "feat: Add new dependency"
 ```
 
-### korail2 라이브러리 업데이트
+### pykorail 라이브러리 업데이트
+
 ```bash
-# 최신 버전으로 업데이트
-pipenv update korail2
-
-# requirements.txt 재생성
-make requirements
-```
-
-## 프로젝트 구조
-
+pipenv update pykorail
 ```
 src/
 ├── app.py                          # Flask 앱 진입점
@@ -190,6 +185,6 @@ tests/                              # 테스트
 
 - **Backend**: Flask, Flask-RESTful, Flask-CORS
 - **Telegram**: python-telegram-bot
-- **Korail API**: [dhfhfk/korail2](https://github.com/dhfhfk/korail2/tree/bypassDynapath)
+- **Korail API**: [devgyurak/pykorail](https://github.com/devgyurak/pykorail)
 - **Testing**: pytest
 - **Deployment**: Docker

@@ -14,7 +14,8 @@ from services import (
     TelegramService,
     KorailService,
     ReservationService,
-    PaymentReminderService
+    PaymentReminderService,
+    MultiReservationReminderService
 )
 from api import TelegramWebhook, PaymentCheckAPI
 from utils.logger import get_logger, LoggerFactory
@@ -54,6 +55,7 @@ except Exception as e:
 telegram_service = TelegramService(settings.TELEGRAM_BOT_TOKEN)
 reservation_service = ReservationService(storage, telegram_service)
 payment_reminder_service = PaymentReminderService(storage, telegram_service)
+multi_reminder_service = MultiReservationReminderService(storage, telegram_service)
 
 # Configure API resources with dependency injection
 api.add_resource(
@@ -63,7 +65,8 @@ api.add_resource(
         'storage': storage,
         'telegram_service': telegram_service,
         'reservation_service': reservation_service,
-        'payment_reminder_service': payment_reminder_service
+        'payment_reminder_service': payment_reminder_service,
+        'multi_reminder_service': multi_reminder_service
     }
 )
 

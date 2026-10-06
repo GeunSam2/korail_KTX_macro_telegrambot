@@ -3,7 +3,6 @@ import subprocess
 import signal
 import os
 from typing import Optional
-from korail2 import TrainType, ReserveOption
 
 from config.settings import settings
 from models import TrainSearchParams, RunningReservation, UserSession

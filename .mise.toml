@@ -8,4 +8,4 @@
 _.file = [".env.default", ".env"]
 
 [tools]
-python = "3.9"
+python = "3.12"
