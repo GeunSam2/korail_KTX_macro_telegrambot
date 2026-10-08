@@ -36,6 +36,23 @@ def service(monkeypatch):
 
 
 class TestLogin:
+    def test_login_rejected_session_reports_server_notice(self, monkeypatch):
+        """SUCC login + pending notice (e.g. WRC000420 password age) -> session unusable -> login False."""
+        svc = KorailService()
+        fake = MagicMock()
+        fake.reservations.all.side_effect = NeedToLoginError(code="P058")
+        monkeypatch.setattr(svc, "_instance", lambda: fake)
+        svc._last_login_payload = {
+            "strResult": "SUCC",
+            "h_msg_cd": "WRC000420",
+            "h_msg_txt": "6개월 이상 동일한 비밀번호를 사용하고 있습니다.",
+            "strRedirectUrl": "/korailtalk-webview/LS/LS0104PG.jsp",
+        }
+        monkeypatch.setattr(svc, "_login_notice", lambda: "6개월 이상 동일한 비밀번호를 사용하고 있습니다. (WRC000420)")
+        assert svc.login("010-0000-0000", "pw") is False
+        assert not svc.is_logged_in
+        assert "WRC000420" in svc.last_login_error and "코레일+ 앱" in svc.last_login_error
+
     def test_login_success(self, monkeypatch):
         svc = KorailService()
         fake = MagicMock()
@@ -117,6 +134,13 @@ class TestSearchTrains:
 
 
 class TestReserveTrain:
+    def test_not_logged_in_within_backoff_returns_none_instead_of_raising(self, service):
+        svc, fake = service
+        svc._logged_in = False
+        svc._last_relogin_attempt = __import__("time").time()  # inside backoff window
+        assert svc.reserve_train(_train("090000")) is None
+        fake.reservations.create.assert_not_called()
+
     def test_sold_out_returns_none(self, service):
         svc, fake = service
         fake.reservations.create.side_effect = SoldOutError(code="ERR211161")

@@ -145,6 +145,7 @@ class KorailService:
         self._relogin_interval: int = 30 * 60  # 30 minutes
         self._relogin_count: int = 0
         self._device_profile = None
+        self._last_login_payload: Optional[dict] = None
         self.last_login_error: Optional[str] = None
 
     # ------------------------------------------------------------------ login
@@ -154,7 +155,50 @@ class KorailService:
             if self._device_profile is None:
                 self._device_profile = _load_device_profile()
             self._korail_instance = Korail(device_profile=self._device_profile)
+            self._hook_login_payload(self._korail_instance)
         return self._korail_instance
+
+    def _hook_login_payload(self, korail: Korail) -> None:
+        """Remember the raw login response.
+
+        pykorail only exposes success/failure, but Korail piggybacks account notices on
+        a successful login (e.g. WRC000420 "6개월 이상 동일한 비밀번호" with a
+        ``strRedirectUrl``). While such a notice is pending the server keeps the session
+        logged out (every authenticated call answers P058), so we need the text to tell
+        the user what to do in the official app.
+        """
+        api = getattr(korail, "_api", None)
+        if api is None or getattr(api, "_korail_service_hooked", False):
+            return
+        original_post = api.post
+
+        def post(url, **kwargs):
+            payload = original_post(url, **kwargs)
+            if isinstance(payload, dict) and url.endswith("login.Login"):
+                self._last_login_payload = payload
+            return payload
+
+        api.post = post
+        api._korail_service_hooked = True
+
+    def _login_notice(self) -> Optional[str]:
+        """Server notice attached to the last login response, if any."""
+        payload = self._last_login_payload or {}
+        if payload.get("strRedirectUrl") or str(payload.get("h_msg_cd", "")).startswith("WRC"):
+            text = (payload.get("h_msg_txt") or "").strip()
+            return f"{text} ({payload.get('h_msg_cd')})" if text else str(payload.get("h_msg_cd"))
+        return None
+
+    def _verify_session(self, korail: Korail) -> bool:
+        """Confirm the login produced a usable session with one cheap authenticated call."""
+        try:
+            korail.reservations.all()
+            return True
+        except NeedToLoginError:
+            return False
+        except Exception as e:  # network blip etc. — don't fail the login over it
+            logger.debug(f"Session verification skipped: {type(e).__name__}: {e}")
+            return True
 
     def login(self, username: str, password: str) -> bool:
         """
@@ -169,9 +213,21 @@ class KorailService:
             in ``last_login_error``.
         """
         self.last_login_error = None
+        self._last_login_payload = None
         try:
             korail = self._instance()
             korail.login(username, password)
+            notice = self._login_notice()
+            if notice:
+                logger.warning(f"Korail attached a notice to the login for {username}: {notice}")
+            if not self._verify_session(korail):
+                self.last_login_error = (
+                    f"코레일 안내를 먼저 처리해야 합니다: {notice or '알 수 없는 안내'}\n"
+                    f"코레일+ 앱에서 로그인해 안내를 확인(변경 또는 다음에 하기)한 뒤 다시 시도하세요."
+                )
+                logger.error(f"Korail login for {username} accepted but session is not usable: {notice}")
+                self._logged_in = False
+                return False
             self._logged_in = True
             self._username = username
             self._password = password
@@ -364,8 +420,11 @@ class KorailService:
         Raises:
             KorailAccessRestrictedError: Korail blocked this client
         """
-        if not self._logged_in or not self._korail_instance:
+        if not self._korail_instance:
             raise ValueError("Must login before reserving")
+        if not self._logged_in and not self._relogin():
+            logger.debug("Skipping reservation attempt: session not logged in (re-login pending)")
+            return None
 
         passengers = [AdultPassenger(passenger_count)]
         logger.debug(f"🎫 Attempting reservation: {train} option={option} passengers={passenger_count}")
