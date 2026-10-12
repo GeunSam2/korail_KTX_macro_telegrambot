@@ -38,9 +38,9 @@ jobs:
         name: Copy docker-compose.yml to server
         uses: appleboy/scp-action@master
         with:
-            host: server.geunsam2.xyz
+            host: ${{ secrets.SSH_HOST }}
             username: ${{ secrets.SSH_USERNAME }}
-            password: ${{ secrets.SSH_PASSWORD }}
+            key: ${{ secrets.SSH_KEY }}
             port: 22
             source: "docker-compose.yml"
             target: "/home/${{ secrets.SSH_USERNAME }}/korail_bot/"
@@ -49,9 +49,9 @@ jobs:
         name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.2.0
         with:
-            host: server.geunsam2.xyz
+            host: ${{ secrets.SSH_HOST }}
             username: ${{ secrets.SSH_USERNAME }}
-            password: ${{ secrets.SSH_PASSWORD }}
+            key: ${{ secrets.SSH_KEY }}
             port: 22
             timeout: 60s
             script: |
