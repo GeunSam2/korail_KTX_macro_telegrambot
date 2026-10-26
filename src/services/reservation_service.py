@@ -2,6 +2,8 @@
 import subprocess
 import signal
 import os
+import sys
+from pathlib import Path
 from typing import Optional
 
 from config.settings import settings
@@ -12,6 +14,9 @@ from services.telegram_service import TelegramService, MessageTemplates
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# src/ directory, so the background module resolves however the app was launched
+SRC_DIR = str(Path(__file__).resolve().parents[1])
 
 
 class ReservationService:
@@ -76,8 +81,11 @@ class ReservationService:
             ]
 
             # Start background process
-            cmd = ['python', '-m', 'telegramBot.telebotBackProcess'] + arguments
-            proc = subprocess.Popen(cmd)
+            # Use the running interpreter (venv/container) rather than whatever `python` is on PATH
+            cmd = [sys.executable, '-m', 'telegramBot.telebotBackProcess'] + arguments
+            env = os.environ.copy()
+            env['PYTHONPATH'] = os.pathsep.join(filter(None, [SRC_DIR, env.get('PYTHONPATH')]))
+            proc = subprocess.Popen(cmd, env=env)
 
             logger.info(
                 f"Started reservation process for chat_id={chat_id}, pid={proc.pid}"

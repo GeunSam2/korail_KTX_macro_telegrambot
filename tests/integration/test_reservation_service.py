@@ -3,6 +3,9 @@ Integration tests for reservation service.
 
 Tests process management, cancellation, and state management.
 """
+import os
+import sys
+
 import pytest
 import time
 from unittest.mock import Mock, patch
@@ -65,6 +68,12 @@ class TestReservationService:
 
         assert success is True
         mock_popen.assert_called_once()
+
+        # Spawned with the current interpreter and src/ on PYTHONPATH
+        cmd = mock_popen.call_args.args[0]
+        assert cmd[:3] == [sys.executable, '-m', 'telegramBot.telebotBackProcess']
+        env = mock_popen.call_args.kwargs['env']
+        assert env['PYTHONPATH'].split(os.pathsep)[0].endswith('src')
 
         # Check storage
         running = self.storage.get_running_reservation(chat_id)
