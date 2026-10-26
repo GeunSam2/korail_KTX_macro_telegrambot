@@ -9,9 +9,9 @@ flask-restful = "*"
 requests = "*"
 flask-cors = "*"
 python-telegram-bot = "*"
-pykorail = "==0.2.2"
 redis = "*"
 hiredis = "*"
+pykorail = "==0.5.1"
 
 [dev-packages]
 pytest = "*"

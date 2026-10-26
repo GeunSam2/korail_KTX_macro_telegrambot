@@ -1,6 +1,6 @@
 """Korail API service wrapper.
 
-Backed by `pykorail` (코레일+ 7.0.8 규격). The public surface used by the rest of
+Backed by `pykorail` (코레일+ 7.0.10 규격). The public surface used by the rest of
 the app is kept stable:
 
 - ``login(username, password) -> bool``
@@ -24,6 +24,7 @@ from pykorail.exceptions import (
     LoginFailedError,
     NeedToLoginError,
     NoResultsError,
+    PasswordChangeRequiredError,
     PastDepartureError,
     SoldOutError,
     StationNotFoundError,
@@ -240,6 +241,12 @@ class KorailService:
         except HttpStatusError as e:
             self.last_login_error = str(e)  # e.g. "HTTP 403: VPN 또는 데이터센터... (-8202)"
             logger.error(f"Korail rejected login request for user {username}: {e}")
+        except PasswordChangeRequiredError as e:
+            self.last_login_error = (
+                f"코레일 안내를 먼저 처리해야 합니다: {e}\n"
+                f"코레일+ 앱에서 로그인해 안내를 확인(변경 또는 다음에 하기)한 뒤 다시 시도하세요."
+            )
+            logger.error(f"Korail login for {username} is held by a password change notice: {e}")
         except LoginFailedError as e:
             self.last_login_error = str(e)
             logger.warning(f"Korail login failed for user {username}: {e}")

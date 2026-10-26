@@ -10,6 +10,7 @@ from pykorail.exceptions import (
     LoginFailedError,
     NeedToLoginError,
     NoResultsError,
+    PasswordChangeRequiredError,
     PastDepartureError,
     SoldOutError,
 )
@@ -49,6 +50,16 @@ class TestLogin:
             "strRedirectUrl": "/korailtalk-webview/LS/LS0104PG.jsp",
         }
         monkeypatch.setattr(svc, "_login_notice", lambda: "6개월 이상 동일한 비밀번호를 사용하고 있습니다. (WRC000420)")
+        assert svc.login("010-0000-0000", "pw") is False
+        assert not svc.is_logged_in
+        assert "WRC000420" in svc.last_login_error and "코레일+ 앱" in svc.last_login_error
+
+    def test_login_password_change_notice_points_to_app(self, monkeypatch):
+        """pykorail >= 0.3 raises PasswordChangeRequiredError for the WRC000420 notice."""
+        svc = KorailService()
+        fake = MagicMock()
+        fake.login.side_effect = PasswordChangeRequiredError("6개월 이상 동일한 비밀번호를 사용하고 있습니다.", "WRC000420")
+        monkeypatch.setattr(svc, "_instance", lambda: fake)
         assert svc.login("010-0000-0000", "pw") is False
         assert not svc.is_logged_in
         assert "WRC000420" in svc.last_login_error and "코레일+ 앱" in svc.last_login_error
